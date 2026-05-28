@@ -12,14 +12,31 @@ const configuredOrigins = String(process.env.CLIENT_ORIGIN || "")
   .filter(Boolean);
 const allowedOrigins = new Set([
   ...configuredOrigins,
+  "https://providerops-tracker-app.vercel.app",
   "http://localhost:5173",
   "http://127.0.0.1:5173"
 ]);
 
+function isAllowedOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+  if (allowedOrigins.has(origin)) {
+    return true;
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return protocol === "https:" && hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
         return;
       }
