@@ -53,7 +53,13 @@ reminderRouter.post("/send-reminder", async (req, res) => {
       rejected: info.rejected
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected email provider error";
-    res.status(502).json({ error: message, provider: "nodemailer" });
+    const statusCode = Number(error?.statusCode || 502);
+    const message = error instanceof Error ? error.message : "Reminder email failed to send.";
+    res.status(statusCode).json({
+      success: false,
+      error: message,
+      provider: "nodemailer",
+      code: error?.code || "SMTP_SEND_FAILED"
+    });
   }
 });

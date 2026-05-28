@@ -5,6 +5,16 @@ function env(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
 }
 
+function getSafeErrorDetails(error) {
+  return {
+    name: error?.name || "Error",
+    code: error?.code || "UNKNOWN",
+    command: error?.command || "",
+    responseCode: error?.responseCode || "",
+    message: error instanceof Error ? error.message : "Unexpected email provider error"
+  };
+}
+
 function createTransporter() {
   const host = env("SMTP_HOST");
   const user = env("SMTP_USER");
@@ -18,6 +28,7 @@ function createTransporter() {
         host,
         port: Number(env("SMTP_PORT", "587")),
         secure: env("SMTP_SECURE", "false").toLowerCase() === "true",
+        family: 4,
         auth: { user, pass }
       })
     };
@@ -40,17 +51,27 @@ export async function sendReminderEmail({ to, subject, html, text, reminderType 
   const from = env("FROM_EMAIL", "ProviderOps Tracker <no-reply@providerops.local>");
   const replyTo = env("REPLY_TO_EMAIL", "credentialing@providerops.local");
 
-  const info = await transporter.sendMail({
-    from,
-    to,
-    replyTo,
-    subject,
-    html: html || undefined,
-    text: text || undefined,
-    headers: {
-      "X-ProviderOps-Reminder-Type": String(reminderType || "unknown")
-    }
-  });
+  let info;
+  try {
+    info = await transporter.sendMail({
+      from,
+      to,
+      replyTo,
+      subject,
+      html: html || undefined,
+      text: text || undefined,
+      headers: {
+        "X-ProviderOps-Reminder-Type": String(reminderType || "unknown")
+      }
+    });
+  } catch (error) {
+    const safeDetails = getSafeErrorDetails(error);
+    console.error("SMTP reminder send failed", safeDetails);
+    const publicError = new Error("Reminder email failed to send. Check SMTP configuration or provider connectivity.");
+    publicError.code = safeDetails.code;
+    publicError.statusCode = 502;
+    throw publicError;
+  }
 
   return {
     messageId: info.messageId || "",
