@@ -1,0 +1,14 @@
+# Environment files (keep secrets out of source control)
+.env
+.env.local
+server/.env
+server/.env.local
+
+# Node artifacts
+node_modules/
+server/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

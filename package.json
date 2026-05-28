@@ -1,0 +1,22 @@
+{
+  "name": "providerops-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test",
+    "frontend": "vite",
+    "server": "npm --prefix server start",
+    "backend": "npm --prefix server start",
+    "backend:dev": "npm --prefix server run dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2"
+  },
+  "devDependencies": {
+    "vite": "^7.3.3"
+  }
+}

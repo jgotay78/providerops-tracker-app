@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProviderOps Tracker</title>
+    <script type="module" crossorigin src="/assets/index-BGYbJHxx.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DL7UTLB1.css">
+  </head>
+  <body>
+    <section id="supabase-warning" class="supabase-warning hidden">
+      Supabase is not configured. Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to frontend env to enable multi-user SaaS mode.
+    </section>
+
+    <section id="auth-shell" class="auth-shell hidden">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <h2>ProviderOps Tracker</h2>
+          <p>Healthcare Credentialing &amp; Expiration Management</p>
+        </div>
+        <div id="auth-alert" class="auth-alert hidden"></div>
+        <form id="login-form" class="auth-form">
+          <h3>Login</h3>
+          <label>Email <input required name="email" type="email" autocomplete="email" /></label>
+          <label>Password <input required name="password" type="password" autocomplete="current-password" /></label>
+          <button type="submit">Login</button>
+        </form>
+        <form id="signup-form" class="auth-form">
+          <h3>Sign Up</h3>
+          <label>Full Name <input name="fullName" type="text" /></label>
+          <label>Organization <input name="organizationName" type="text" /></label>
+          <label>Email <input required name="email" type="email" autocomplete="email" /></label>
+          <label>Password <input required name="password" minlength="8" type="password" autocomplete="new-password" /></label>
+          <button type="submit">Create Account</button>
+        </form>
+        <form id="forgot-form" class="auth-form">
+          <h3>Forgot Password</h3>
+          <label>Email <input required name="email" type="email" autocomplete="email" /></label>
+          <button type="submit">Send Reset Link</button>
+        </form>
+      </div>
+    </section>
+
+    <main id="app-shell" class="app hidden">
+      <header class="hero" aria-label="Application header">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img" focusable="false">
+              <rect x="6" y="8" width="52" height="48" rx="10" fill="#0f766e"></rect>
+              <path d="M18 33h28M18 24h18M18 42h14" stroke="#ffffff" stroke-width="4" stroke-linecap="round"></path>
+              <circle cx="46" cy="42" r="8" fill="#38bdf8"></circle>
+              <path d="M43 42l2 2 4-5" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="eyebrow">Provider Operations</p>
+            <h1>ProviderOps Tracker</h1>
+            <p class="meta">Credentialing &amp; Expirables Workflow Dashboard</p>
+            <p class="hero-copy">Track provider credentials, expiration risk, renewal work, and reminder outreach in one clean operations view.</p>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <p id="storage-mode-chip" class="mode-chip mode-fallback">Local Fallback Mode</p>
+          <p class="asof">As of <span id="as-of-date"></span></p>
+          <p id="current-user-email" class="current-user-email"></p>
+          <button id="logout-btn" class="btn-soft" type="button">Logout</button>
+        </div>
+      </header>
+
+      <section class="kpis" aria-label="Credentialing summary">
+        <article class="kpi kpi-total">
+          <h2>Total Providers</h2>
+          <p id="kpi-total" class="kpi-value">0</p>
+        </article>
+        <article class="kpi">
+          <h2><span class="kpi-icon" aria-hidden="true">✅</span> Active 61+ Days</h2>
+          <p id="kpi-active" class="kpi-value">0</p>
+        </article>
+        <article class="kpi">
+          <h2><span class="kpi-icon" aria-hidden="true">⏰</span> Due &lt;30 Days</h2>
+          <p id="kpi-due30" class="kpi-value">0</p>
+        </article>
+        <article class="kpi">
+          <h2><span class="kpi-icon" aria-hidden="true">🟠</span> Due 30-60 Days</h2>
+          <p id="kpi-due60" class="kpi-value">0</p>
+        </article>
+        <article class="kpi">
+          <h2><span class="kpi-icon" aria-hidden="true">❗</span> Expired</h2>
+          <p id="kpi-expired" class="kpi-value">0</p>
+        </article>
+        <article class="kpi">
+          <h2><span class="kpi-icon" aria-hidden="true">📋</span> Missing Expiration</h2>
+          <p id="kpi-missing" class="kpi-value">0</p>
+        </article>
+        <article class="kpi kpi-compliance">
+          <h2><span class="kpi-icon" aria-hidden="true">🎯</span> Compliance Score</h2>
+          <div class="compliance-wrap">
+            <div id="compliance-ring" class="compliance-ring" style="--compliance: 0;">
+              <span id="compliance-score">0%</span>
+            </div>
+          </div>
+        </article>
+        <article class="kpi kpi-weekly">
+          <h2><span class="kpi-icon" aria-hidden="true">⚠️</span> Expiring This Week</h2>
+          <p id="kpi-week" class="kpi-value">0</p>
+        </article>
+        <article class="kpi kpi-reminders-sent">
+          <h2><span class="kpi-icon" aria-hidden="true">✉️</span> Reminders Sent</h2>
+          <p id="kpi-reminders-sent" class="kpi-value">0</p>
+        </article>
+        <article class="kpi kpi-pending-reminders">
+          <h2><span class="kpi-icon" aria-hidden="true">⏳</span> Pending Reminders</h2>
+          <p id="kpi-pending-reminders" class="kpi-value">0</p>
+        </article>
+      </section>
+
+      <section class="panel dashboard-panel" aria-label="Presentation dashboard">
+        <div class="dashboard-header">
+          <h2>Executive Dashboard</h2>
+          <p>Presentation-ready analytics from live tracker records.</p>
+        </div>
+        <div class="dashboard-grid">
+          <article class="chart-card">
+            <h3>Status Distribution</h3>
+            <div class="pie-row">
+              <div id="status-pie" class="pie" aria-label="Status distribution pie chart">
+                <div class="pie-center">
+                  <span>Total</span>
+                  <strong id="status-total">0</strong>
+                </div>
+              </div>
+              <ul id="status-legend" class="legend"></ul>
+            </div>
+          </article>
+          <article class="chart-card">
+            <h3>Owner Workload</h3>
+            <div class="pie-row">
+              <div id="owner-pie" class="pie" aria-label="Owner workload pie chart">
+                <div class="pie-center">
+                  <span>Owners</span>
+                  <strong id="owner-total">0</strong>
+                </div>
+              </div>
+              <ul id="owner-legend" class="legend"></ul>
+            </div>
+          </article>
+        </div>
+        <div class="highlights">
+          <article class="highlight">
+            <h4>At-Risk Credentials</h4>
+            <p id="highlight-risk">0</p>
+          </article>
+          <article class="highlight">
+            <h4>Submitted, Not Approved</h4>
+            <p id="highlight-submitted">0</p>
+          </article>
+          <article class="highlight">
+            <h4>Top Owner Queue</h4>
+            <p id="highlight-owner">N/A</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Add Credential Record</h2>
+        <form id="record-form" class="record-form">
+          <label>Provider Name <input required name="providerName" type="text" /></label>
+          <label>NPI (10 digits) <input required name="providerId" type="text" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="1234567890" /></label>
+          <label>Provider Email (optional) <input name="providerEmail" type="email" placeholder="provider@hospital.org" /></label>
+          <label>Specialty <input required name="specialty" type="text" /></label>
+          <label>Credential Type <input required name="credentialType" type="text" /></label>
+          <label>Credential Number <input name="credentialNumber" type="text" /></label>
+          <label>State <input name="state" maxlength="2" placeholder="TX" type="text" /></label>
+          <label>Initial Issue Date (MM/DD/YYYY) <input name="issueDate" type="date" /></label>
+          <label>Expiration Date (MM/DD/YYYY) <input name="expirationDate" type="date" /></label>
+          <label>Renewal Submitted Date (MM/DD/YYYY, optional, or 0)
+            <input name="renewalSubmitted" type="text" placeholder="MM/DD/YYYY or 0" />
+          </label>
+          <label>Renewal Approved
+            <select name="renewalApproved">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </label>
+          <label>Credentialing Owner <input required name="owner" type="text" /></label>
+          <label class="full">Notes <textarea name="notes" rows="2"></textarea></label>
+          <div class="full form-actions">
+            <button id="record-submit" type="submit">Add Record</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="records-head">
+          <h2>Records</h2>
+          <div class="records-actions">
+            <button id="import-csv" class="btn-soft" type="button">Import CSV</button>
+            <button id="download-template" class="btn-soft" type="button">Download Template</button>
+            <input id="import-file" type="file" accept=".csv,text/csv" hidden />
+          </div>
+        </div>
+        <div class="quick-filters" role="group" aria-label="Quick filters">
+          <button class="quick-filter active" data-quick-filter="ALL" type="button">All Records</button>
+          <button class="quick-filter" data-quick-filter="EXPIRED" type="button">Expired</button>
+          <button class="quick-filter" data-quick-filter="DUE_MONTH" type="button">Due This Month</button>
+          <button class="quick-filter" data-quick-filter="DUE_30" type="button">Due &lt;30 Days</button>
+          <button class="quick-filter" data-quick-filter="MISSING" type="button">Missing Expiration</button>
+          <button class="quick-filter" data-quick-filter="ACTIVE" type="button">Active</button>
+        </div>
+        <div class="filters">
+          <label class="search-label">
+            Search
+            <span class="search-field">
+              <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="M20 20l-3.5-3.5"></path>
+              </svg>
+              <input id="filter-search" placeholder="Provider, NPI, specialty, owner..." type="text" />
+            </span>
+          </label>
+          <label>
+            Status
+            <select id="filter-status">
+              <option value="ALL">All statuses</option>
+              <option value="Active">61+ Days</option>
+              <option value="Due &lt;30 Days">Due &lt;30 Days</option>
+              <option value="Due 30-60 Days">Due 30-60 Days</option>
+              <option value="Expired">Expired</option>
+              <option value="Missing Expiration">Missing Expiration</option>
+            </select>
+          </label>
+          <label>
+            Owner
+            <select id="filter-owner">
+              <option value="ALL">All owners</option>
+            </select>
+          </label>
+          <div class="filter-actions">
+            <button id="clear-filters" class="btn-soft" type="button">Clear All Filters</button>
+            <button id="export-csv" class="btn-soft" type="button">Export CSV</button>
+            <button id="reset-data" class="btn-soft" type="button">Reset Demo Data</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" id="table-wrap">
+          <div class="table-loading" id="table-loading" aria-hidden="true"><span></span></div>
+          <table>
+            <thead>
+              <tr>
+                <th class="sticky-col sticky-1">NPI</th>
+                <th class="sticky-col sticky-2">Provider</th>
+                <th class="provider-email-col">Provider Email</th>
+                <th>Specialty</th>
+                <th>State</th>
+                <th>Initial Issue</th>
+                <th>Expiration</th>
+                <th>Days Left</th>
+                <th>Urgency</th>
+                <th>Status</th>
+                <th>Owner</th>
+                <th>Renewal</th>
+                <th class="last-reminder-col">Last Reminder</th>
+                <th class="last-updated-col">Last Updated</th>
+                <th class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="records-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel notifications-panel">
+        <div class="records-head">
+          <h2>Upcoming Notifications</h2>
+        </div>
+        <div class="quick-filters notification-filters" role="group" aria-label="Notification filters">
+          <button class="quick-filter active" data-notification-filter="ALL" type="button">All</button>
+          <button class="quick-filter" data-notification-filter="Pending" type="button">Pending</button>
+          <button class="quick-filter" data-notification-filter="Reminder Sent" type="button">Reminder Sent</button>
+          <button class="quick-filter" data-notification-filter="Reminder Resent" type="button">Reminder Resent</button>
+          <button class="quick-filter" data-notification-filter="Failed" type="button">Failed</button>
+          <button class="quick-filter" data-notification-filter="No Email Configured" type="button">No Email Configured</button>
+          <button class="quick-filter" data-notification-filter="Expired" type="button">Expired</button>
+        </div>
+        <div class="table-wrap" id="notifications-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Provider Email</th>
+                <th>Credential Type</th>
+                <th>Expiration Date</th>
+                <th>Days Remaining</th>
+                <th>Reminder Type</th>
+                <th>Notification Status</th>
+                <th>Reminder Sent Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="notifications-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="modal-backdrop" class="modal-backdrop hidden" role="presentation">
+      <section id="details-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="details-title">
+        <header class="modal-head">
+          <h3 id="details-title">Credential Record Details</h3>
+          <button id="close-details-modal" class="btn-icon" type="button" aria-label="Close details">✕</button>
+        </header>
+        <div class="modal-body details-body" id="details-body">
+        </div>
+      </section>
+
+      <section id="delete-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+        <header class="modal-head">
+          <h3 id="delete-title">Confirm Deletion</h3>
+          <button id="close-delete-modal" class="btn-icon" type="button" aria-label="Close delete confirmation">✕</button>
+        </header>
+        <div class="modal-body">
+          <p id="delete-message">Are you sure you want to permanently delete this credential record?</p>
+        </div>
+        <footer class="modal-actions">
+          <button id="cancel-delete" class="btn-soft" type="button">Cancel</button>
+          <button id="confirm-delete" class="btn-danger" type="button">Delete Record</button>
+        </footer>
+      </section>
+
+      <section id="reminder-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="reminder-title">
+        <header class="modal-head">
+          <h3 id="reminder-title">Reminder Email Preview</h3>
+          <button id="close-reminder-modal" class="btn-icon" type="button" aria-label="Close reminder preview">✕</button>
+        </header>
+        <div class="modal-body" id="reminder-body"></div>
+        <footer class="modal-actions">
+          <button id="cancel-reminder" class="btn-soft" type="button">Cancel</button>
+          <button id="send-reminder-email" type="button">Send Email</button>
+          <button id="confirm-reminder-sent" class="btn-soft" type="button">Mark as Sent Manually</button>
+        </footer>
+      </section>
+
+      <section id="history-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="history-title">
+        <header class="modal-head">
+          <h3 id="history-title">Reminder History</h3>
+          <button id="close-history-modal" class="btn-icon" type="button" aria-label="Close reminder history">✕</button>
+        </header>
+        <div class="modal-body" id="history-body"></div>
+      </section>
+    </div>
+
+    <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+
+  </body>
+</html>
