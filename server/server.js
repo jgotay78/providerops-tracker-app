@@ -2,7 +2,7 @@ import "./config/env.js";
 import cors from "cors";
 import express from "express";
 import { reminderRouter } from "./routes/reminders.js";
-import { getEmailTransportMode } from "./services/emailService.js";
+import { getEmailProviderName, getEmailTransportMode } from "./services/emailService.js";
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -50,7 +50,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "providerops-reminder-service",
-    emailProvider: "nodemailer",
+    emailProvider: getEmailProviderName(),
     transportMode: getEmailTransportMode()
   });
 });
@@ -59,5 +59,10 @@ app.use("/api", reminderRouter);
 
 app.listen(port, () => {
   console.log(`ProviderOps reminder API running on port ${port}`);
-  console.log(`Email provider: Nodemailer (${getEmailTransportMode()} mode)`);
+  const providerName = getEmailProviderName();
+  if (providerName === "Resend") {
+    console.log("Email provider: Resend");
+    return;
+  }
+  console.log(`Email provider: ${providerName} (${getEmailTransportMode()} mode)`);
 });

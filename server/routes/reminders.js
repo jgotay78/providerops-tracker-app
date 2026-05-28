@@ -47,7 +47,7 @@ reminderRouter.post("/send-reminder", async (req, res) => {
 
     res.status(200).json({
       success: true,
-      provider: "nodemailer",
+      provider: info.provider || "email",
       emailId: info.messageId,
       accepted: info.accepted,
       rejected: info.rejected
@@ -58,8 +58,8 @@ reminderRouter.post("/send-reminder", async (req, res) => {
     res.status(statusCode).json({
       success: false,
       error: message,
-      provider: "nodemailer",
-      code: error?.code || "SMTP_SEND_FAILED"
+      provider: error?.provider || "email",
+      code: error?.code || "EMAIL_SEND_FAILED"
     });
   }
 });
