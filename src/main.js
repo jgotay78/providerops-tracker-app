@@ -187,7 +187,6 @@ const counterValues = new Map();
 const elements = {
   appShell: document.querySelector("#app-shell"),
   authShell: document.querySelector("#auth-shell"),
-  supabaseWarning: document.querySelector("#supabase-warning"),
   loginForm: document.querySelector("#login-form"),
   signupForm: document.querySelector("#signup-form"),
   forgotForm: document.querySelector("#forgot-form"),
@@ -1217,15 +1216,13 @@ function renderAuthGate() {
   }
 
   if (!state.useSupabase) {
-    elements.supabaseWarning.classList.remove("hidden");
     elements.authShell.classList.add("hidden");
     elements.appShell.classList.remove("hidden");
-    elements.currentUserEmail.textContent = "Fallback Mode";
+    elements.currentUserEmail.textContent = "Demo Mode";
     elements.logoutBtn.classList.add("hidden");
     return;
   }
 
-  elements.supabaseWarning.classList.add("hidden");
   if (!state.session || !state.user) {
     elements.authShell.classList.remove("hidden");
     elements.appShell.classList.add("hidden");

@@ -41,17 +41,6 @@ body {
   display: none !important;
 }
 
-.supabase-warning {
-  margin: 12px auto 0;
-  max-width: 1360px;
-  padding: 10px 14px;
-  border: 1px solid #fdba74;
-  border-radius: 10px;
-  background: #fff7ed;
-  color: #9a3412;
-  font-size: 0.86rem;
-}
-
 .auth-shell {
   min-height: 100vh;
   display: grid;
