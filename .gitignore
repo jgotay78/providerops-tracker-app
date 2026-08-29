@@ -8,6 +8,13 @@ server/.env.local
 node_modules/
 server/node_modules/
 
+# Build output
+dist/
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
