@@ -1,5 +1,5 @@
 if (typeof document !== "undefined") {
-  void import("./provider-view.js");
+  void import("./provider-view.js").then(() => import("./provider-table-view.js"));
 }
 
 const REMINDER_THRESHOLDS = [60, 30, 14, 7];
