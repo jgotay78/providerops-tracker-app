@@ -1,3 +1,5 @@
+import "./provider-view.js";
+
 const REMINDER_THRESHOLDS = [60, 30, 14, 7];
 
 function formatDate(dateString) {
