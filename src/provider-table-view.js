@@ -1,5 +1,7 @@
 import "./provider-view.css";
 import "./provider-table-view.css";
+import "./clinic-view.css";
+import { getClinicContactEmail, normalizeClinicName } from "./clinic-data.js";
 
 const PREFERRED_CREDENTIAL_ORDER = [
   "State License",
@@ -41,7 +43,7 @@ function parseProviderCard(card) {
     const expiration = text(metas[0], "strong");
     const days = text(metas[0], "span");
     const statusBadge = metas[1]?.querySelector(".provider-risk-badge");
-    const owner = text(metas[2], "strong");
+    const clinic = normalizeClinicName(text(metas[2], "strong"));
     const actions = credential.querySelector(".credential-actions");
 
     return {
@@ -51,16 +53,21 @@ function parseProviderCard(card) {
       days,
       status: statusBadge?.textContent?.trim() || "",
       statusClass: statusBadge?.className || "provider-risk-badge",
-      owner,
+      clinic,
       actionsHtml: actions?.innerHTML || ""
     };
   });
+
+  const clinic = normalizeClinicName(credentials.find((credential) => credential.clinic)?.clinic || "");
+  const clinicContactEmail = getClinicContactEmail(clinic);
 
   return {
     name: text(card, ".provider-name-line h3") || "Unnamed Provider",
     npi,
     specialty,
     email,
+    clinic,
+    clinicContactEmail,
     risk: riskBadge?.textContent?.trim() || "",
     riskClass: riskBadge?.className || "provider-risk-badge",
     nextExpiration,
@@ -88,7 +95,6 @@ function credentialCell(credentials) {
       <div class="matrix-expiration">${escapeHtml(credential.expiration || "Missing")}</div>
       <div class="matrix-days">${escapeHtml(credential.days || "")}</div>
       <span class="${escapeHtml(credential.statusClass)}">${escapeHtml(credential.status)}</span>
-      <div class="matrix-owner">${escapeHtml(credential.owner || "Unassigned")}</div>
       <div class="matrix-actions">${credential.actionsHtml}</div>
     </div>
   `).join("");
@@ -104,7 +110,9 @@ function buildMatrix(cards) {
         <th class="matrix-sticky-provider">Provider</th>
         <th>NPI</th>
         <th>Specialty</th>
-        <th>Email</th>
+        <th>Provider Email</th>
+        <th>Clinic / Practice</th>
+        <th>Clinic Contact Email</th>
         ${credentialTypes.map((type) => `<th class="matrix-credential-heading">${escapeHtml(type)}</th>`).join("")}
         <th>Next Expiration</th>
         <th>Overall Status</th>
@@ -118,6 +126,8 @@ function buildMatrix(cards) {
       <td class="matrix-npi">${escapeHtml(provider.npi)}</td>
       <td>${escapeHtml(provider.specialty || "—")}</td>
       <td class="matrix-email">${escapeHtml(provider.email || "—")}</td>
+      <td class="matrix-clinic"><strong>${escapeHtml(provider.clinic || "Unassigned clinic")}</strong></td>
+      <td class="matrix-clinic-contact">${escapeHtml(provider.clinicContactEmail || "No clinic contact configured")}</td>
       ${credentialTypes.map((type) => `<td class="matrix-credential-cell">${credentialCell(provider.credentials.filter((credential) => credential.type === type))}</td>`).join("")}
       <td class="matrix-next-expiration">${escapeHtml(provider.nextExpiration || "—")}</td>
       <td><span class="${escapeHtml(provider.riskClass)}">${escapeHtml(provider.risk)}</span></td>
@@ -132,7 +142,7 @@ function buildMatrix(cards) {
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <div class="matrix-scroll-hint">← Scroll left or right to view all credential columns →</div>
+    <div class="matrix-scroll-hint">← Scroll left or right to view clinic and credential columns →</div>
   `;
 }
 
@@ -148,7 +158,7 @@ function horizontalizeDirectory() {
 
   const subtitle = document.querySelector(".provider-directory-title p");
   if (subtitle) {
-    subtitle.textContent = "One provider per row. Scroll horizontally to review licenses and credentials across columns.";
+    subtitle.textContent = "One provider per row, assigned to a clinic with a designated contact. Scroll horizontally to review credentials.";
   }
 }
 
