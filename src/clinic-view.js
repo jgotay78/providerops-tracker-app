@@ -9,45 +9,49 @@ import {
   persistClinicContactEmail
 } from "./clinic-data.js";
 
-const RECORDS_KEY = "credentialing-tracker-v1";
 let clinicViewerMode = false;
 let viewerClinics = [];
 let uiObserver = null;
+let relabelTimer = null;
 
 function clean(value) {
   return String(value ?? "").trim();
 }
 
-function setLeadingLabelText(label, text) {
+function setTextIfDifferent(element, value) {
+  if (!element) return;
+  if (element.textContent !== value) element.textContent = value;
+}
+
+function setLeadingLabelText(label, value) {
   if (!label) return;
   const first = [...label.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
-  if (first) first.textContent = `${text} `;
+  const next = `${value} `;
+  if (first && first.nodeValue !== next) first.nodeValue = next;
 }
 
 function ensureClinicContactInput() {
   const form = document.querySelector("#record-form");
   if (!form || form.elements.namedItem("clinicContactEmail")) return;
 
-  const ownerInput = form.elements.namedItem("owner");
-  const ownerLabel = ownerInput?.closest("label");
-  if (!ownerLabel) return;
+  const clinicInput = form.elements.namedItem("owner");
+  const clinicLabel = clinicInput?.closest("label");
+  if (!clinicLabel) return;
 
   const label = document.createElement("label");
   label.dataset.clinicContactField = "true";
   label.innerHTML = `Designated Clinic Contact Email
-    <input name="clinicContactEmail" type="email" placeholder="practice.manager@clinic.org" />`;
-  ownerLabel.insertAdjacentElement("afterend", label);
+    <input name="clinicContactEmail" type="email" placeholder="practice.manager@clinic.org" autocomplete="email" />`;
+  clinicLabel.insertAdjacentElement("afterend", label);
 }
 
 function currentClinicInput() {
-  const form = document.querySelector("#record-form");
-  const ownerInput = form?.elements.namedItem("owner");
-  return ownerInput instanceof HTMLInputElement ? ownerInput : null;
+  const input = document.querySelector("#record-form")?.elements.namedItem("owner");
+  return input instanceof HTMLInputElement ? input : null;
 }
 
 function currentContactInput() {
-  const form = document.querySelector("#record-form");
-  const input = form?.elements.namedItem("clinicContactEmail");
+  const input = document.querySelector("#record-form")?.elements.namedItem("clinicContactEmail");
   return input instanceof HTMLInputElement ? input : null;
 }
 
@@ -56,29 +60,16 @@ function hydrateContactInput() {
   const contactInput = currentContactInput();
   if (!clinicInput || !contactInput) return;
 
-  const normalized = normalizeClinicName(clinicInput.value);
-  if (normalized && clinicInput.value !== normalized) clinicInput.value = normalized;
-  if (!contactInput.value && normalized) {
-    contactInput.value = getClinicContactEmail(normalized);
-  }
+  const clinic = normalizeClinicName(clinicInput.value);
+  if (clinic && clinicInput.value !== clinic) clinicInput.value = clinic;
+  if (!contactInput.value && clinic) contactInput.value = getClinicContactEmail(clinic);
 }
 
-function replaceLegacyClinicNames(root = document) {
-  const replacements = [
-    ["Maria Gomez", "Horizon Medical Clinic"],
-    ["Noah Reed", "Lakeside Pediatric & Family Care"],
-    ["Kira Stone", "Northstar Specialty Clinic"]
-  ];
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  for (const node of nodes) {
-    let value = node.nodeValue || "";
-    let next = value;
-    for (const [from, to] of replacements) next = next.replaceAll(from, to);
-    if (next !== value) node.nodeValue = next;
-  }
+function relabelCredentialClinicText() {
+  document.querySelectorAll(".credential-meta").forEach((meta) => {
+    const span = meta.querySelector("span");
+    if (span?.textContent?.trim() === "Credential owner") setTextIfDifferent(span, "Clinic");
+  });
 }
 
 function relabelUi() {
@@ -89,37 +80,43 @@ function relabelUi() {
   setLeadingLabelText(clinicInput?.closest("label"), "Clinic / Practice");
 
   const note = document.querySelector(".provider-form-note");
-  if (note) {
-    note.textContent = "Enter an existing NPI to reuse provider information. Assign the provider to a clinic and add the designated clinic contact email. Duplicate credentials remain blocked by provider, credential type, and state.";
-  }
+  setTextIfDifferent(
+    note,
+    "Enter an existing NPI to reuse provider information. Assign the provider to a clinic and add the designated clinic contact email. Duplicate credentials remain blocked by provider, credential type, and state."
+  );
 
   const search = document.querySelector("#filter-search");
-  if (search instanceof HTMLInputElement) search.placeholder = "Provider, NPI, specialty, clinic...";
+  if (search instanceof HTMLInputElement && search.placeholder !== "Provider, NPI, specialty, clinic...") {
+    search.placeholder = "Provider, NPI, specialty, clinic...";
+  }
+
   const directorySearch = document.querySelector("#provider-directory-search");
-  if (directorySearch instanceof HTMLInputElement) directorySearch.placeholder = "Search provider, NPI, specialty, clinic or credential...";
+  if (
+    directorySearch instanceof HTMLInputElement &&
+    directorySearch.placeholder !== "Search provider, NPI, specialty, clinic or credential..."
+  ) {
+    directorySearch.placeholder = "Search provider, NPI, specialty, clinic or credential...";
+  }
 
   const filter = document.querySelector("#filter-owner");
   setLeadingLabelText(filter?.closest("label"), "Clinic");
-  const allOption = filter?.querySelector('option[value="ALL"]');
-  if (allOption) allOption.textContent = "All clinics";
+  setTextIfDifferent(filter?.querySelector('option[value="ALL"]'), "All clinics");
 
-  const ownerTotalLabel = document.querySelector("#owner-total")?.parentElement?.querySelector("span");
-  if (ownerTotalLabel) ownerTotalLabel.textContent = "Clinics";
-  const ownerChartTitle = document.querySelector("#owner-pie")?.closest(".chart-card")?.querySelector("h3");
-  if (ownerChartTitle) ownerChartTitle.textContent = "Credential Workload by Clinic";
-
-  const topQueue = document.querySelector("#highlight-owner")?.closest(".highlight")?.querySelector("h4");
-  if (topQueue) topQueue.textContent = "Largest Clinic Queue";
+  setTextIfDifferent(document.querySelector("#owner-total")?.parentElement?.querySelector("span"), "Clinics");
+  setTextIfDifferent(
+    document.querySelector("#owner-pie")?.closest(".chart-card")?.querySelector("h3"),
+    "Credential Workload by Clinic"
+  );
+  setTextIfDifferent(
+    document.querySelector("#highlight-owner")?.closest(".highlight")?.querySelector("h4"),
+    "Largest Clinic Queue"
+  );
 
   document.querySelectorAll("th").forEach((th) => {
-    if (th.textContent?.trim() === "Owner") th.textContent = "Clinic";
+    if (th.textContent?.trim() === "Owner") setTextIfDifferent(th, "Clinic");
   });
 
-  document.querySelectorAll(".credential-meta span").forEach((span) => {
-    if (span.textContent?.trim() === "Credential owner") span.textContent = "Clinic";
-  });
-
-  replaceLegacyClinicNames(document.querySelector("#app-shell") || document);
+  relabelCredentialClinicText();
   hydrateContactInput();
   applyViewerMode();
 }
@@ -134,6 +131,7 @@ function showClinicToast(message, type = "info") {
 
 async function persistContactToSupabase(clinic, contactEmail) {
   if (!isSupabaseConfigured || !supabase || !clinic) return;
+
   try {
     const { data } = await supabase.auth.getSession();
     const user = data?.session?.user;
@@ -161,70 +159,87 @@ function bindFormClinicFields() {
   if (document.documentElement.dataset.clinicFormBound === "true") return;
   document.documentElement.dataset.clinicFormBound = "true";
 
-  document.addEventListener("focusout", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || target.name !== "owner") return;
-    const clinic = normalizeClinicName(target.value);
-    target.value = clinic;
-    const contactInput = currentContactInput();
-    if (contactInput && !contactInput.value) contactInput.value = getClinicContactEmail(clinic);
-  }, true);
+  document.addEventListener(
+    "focusout",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.name !== "owner") return;
+      const clinic = normalizeClinicName(target.value);
+      target.value = clinic;
+      const contactInput = currentContactInput();
+      if (contactInput && !contactInput.value) contactInput.value = getClinicContactEmail(clinic);
+    },
+    true
+  );
 
-  document.addEventListener("click", (event) => {
-    const target = event.target instanceof HTMLElement ? event.target : null;
-    if (!target) return;
-    if (target.closest("[data-edit-id], [data-provider-action='edit'], [data-add-provider-credential]")) {
-      setTimeout(hydrateContactInput, 180);
-      setTimeout(hydrateContactInput, 550);
-    }
-  }, true);
-
-  document.addEventListener("submit", (event) => {
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement) || form.id !== "record-form") return;
-
-    const clinicInput = currentClinicInput();
-    const contactInput = currentContactInput();
-    if (!clinicInput || !contactInput) return;
-
-    const clinic = normalizeClinicName(clinicInput.value);
-    const contactEmail = clean(contactInput.value);
-    clinicInput.value = clinic;
-
-    if (!isEmail(contactEmail)) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      showClinicToast("Please enter a valid designated clinic contact email.", "error");
-      contactInput.focus();
-      return;
-    }
-
-    persistClinicContactEmail(clinic, contactEmail);
-    setTimeout(() => void persistContactToSupabase(clinic, contactEmail), 650);
-  }, true);
-
-  document.addEventListener("change", async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || target.id !== "import-file") return;
-    const file = target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const { records } = parseCsvRecords(text);
-      for (const record of records) {
-        const clinic = normalizeClinicName(record.clinicName || record.owner);
-        const contact = clean(record.clinicContactEmail);
-        if (clinic && contact) persistClinicContactEmail(clinic, contact);
+  document.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (!target) return;
+      if (target.closest("[data-edit-id], [data-provider-action='edit'], [data-add-provider-credential]")) {
+        setTimeout(hydrateContactInput, 180);
+        setTimeout(hydrateContactInput, 550);
       }
-    } catch {
-      // The normal import workflow owns user-facing CSV errors.
-    }
-  }, true);
+    },
+    true
+  );
+
+  document.addEventListener(
+    "submit",
+    (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || form.id !== "record-form") return;
+
+      const clinicInput = currentClinicInput();
+      const contactInput = currentContactInput();
+      if (!clinicInput || !contactInput) return;
+
+      const clinic = normalizeClinicName(clinicInput.value);
+      const contactEmail = clean(contactInput.value);
+      clinicInput.value = clinic;
+
+      if (!isEmail(contactEmail)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showClinicToast("Please enter a valid designated clinic contact email.", "error");
+        contactInput.focus();
+        return;
+      }
+
+      persistClinicContactEmail(clinic, contactEmail);
+      setTimeout(() => void persistContactToSupabase(clinic, contactEmail), 650);
+    },
+    true
+  );
+
+  document.addEventListener(
+    "change",
+    async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.id !== "import-file") return;
+      const file = target.files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const { records } = parseCsvRecords(text);
+        for (const record of records) {
+          const clinic = normalizeClinicName(record.clinicName || record.owner);
+          const contact = clean(record.clinicContactEmail);
+          if (clinic && contact) persistClinicContactEmail(clinic, contact);
+        }
+      } catch {
+        // The regular import flow owns the visible CSV error handling.
+      }
+    },
+    true
+  );
 }
 
 async function hydrateSupabaseClinicAccess() {
   if (!isSupabaseConfigured || !supabase) return;
+
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
@@ -250,11 +265,13 @@ async function hydrateSupabaseClinicAccess() {
 
     if (sharedRows.length) {
       clinicViewerMode = true;
-      viewerClinics = [...new Set(sharedRows.map((row) => normalizeClinicName(row.clinic_name || row.owner)).filter(Boolean))];
+      viewerClinics = [
+        ...new Set(sharedRows.map((row) => normalizeClinicName(row.clinic_name || row.owner)).filter(Boolean))
+      ];
       applyViewerMode();
     }
   } catch {
-    // Older Supabase schemas simply continue in owner/editor mode.
+    // Older Supabase schemas continue in normal editor mode.
   }
 }
 
@@ -269,14 +286,30 @@ function applyViewerMode() {
   if (panel && !panel.querySelector(".clinic-view-banner")) {
     const banner = document.createElement("div");
     banner.className = "clinic-view-banner";
-    banner.innerHTML = `<strong>Clinic View</strong><span>${viewerClinics.join(", ")} · Read-only provider access</span>`;
+    const strong = document.createElement("strong");
+    strong.textContent = "Clinic View";
+    const span = document.createElement("span");
+    span.textContent = `${viewerClinics.join(", ")} · Read-only provider access`;
+    banner.append(strong, span);
     panel.prepend(banner);
   }
 }
 
+function scheduleRelabel() {
+  clearTimeout(relabelTimer);
+  relabelTimer = setTimeout(relabelUi, 40);
+}
+
 function observeUi() {
-  if (uiObserver) return;
-  uiObserver = new MutationObserver(() => relabelUi());
+  if (uiObserver || !document.body) return;
+
+  uiObserver = new MutationObserver((records) => {
+    const hasNewElement = records.some((record) =>
+      [...record.addedNodes].some((node) => node.nodeType === Node.ELEMENT_NODE)
+    );
+    if (hasNewElement) scheduleRelabel();
+  });
+
   uiObserver.observe(document.body, { childList: true, subtree: true });
 }
 
