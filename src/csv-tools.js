@@ -10,9 +10,15 @@ export const REQUIRED_IMPORT_COLUMNS = [
   "Expiration Date",
   "Renewal Submitted",
   "Renewal Approved",
-  "Owner",
+  "Clinic / Practice",
+  "Clinic Contact Email",
   "Notes"
 ];
+
+const HEADER_ALIASES = {
+  "Clinic / Practice": ["Clinic / Practice", "Clinic", "Owner"],
+  "Clinic Contact Email": ["Clinic Contact Email", "Designated Clinic Contact Email", "Practice Contact Email"]
+};
 
 export function normalizeHeader(header) {
   return String(header || "")
@@ -75,6 +81,15 @@ export function parseCsv(csvText) {
   return rows;
 }
 
+function findHeaderIndex(normalizedHeaderIndex, name) {
+  const aliases = HEADER_ALIASES[name] || [name];
+  for (const alias of aliases) {
+    const index = normalizedHeaderIndex.get(normalizeHeader(alias));
+    if (index !== undefined) return index;
+  }
+  return undefined;
+}
+
 export function parseCsvRecords(csvText) {
   const rows = parseCsv(csvText);
   if (!rows.length) {
@@ -89,7 +104,7 @@ export function parseCsvRecords(csvText) {
   });
 
   const missingColumns = REQUIRED_IMPORT_COLUMNS.filter(
-    (column) => !normalizedHeaderIndex.has(normalizeHeader(column))
+    (column) => findHeaderIndex(normalizedHeaderIndex, column) === undefined
   );
 
   if (missingColumns.length) {
@@ -100,9 +115,12 @@ export function parseCsvRecords(csvText) {
 
   const records = dataRows.map((cells) => {
     const getCell = (name) => {
-      const index = normalizedHeaderIndex.get(normalizeHeader(name));
+      const index = findHeaderIndex(normalizedHeaderIndex, name);
       return index === undefined ? "" : String(cells[index] || "").trim();
     };
+
+    const clinicName = getCell("Clinic / Practice");
+    const clinicContactEmail = getCell("Clinic Contact Email");
 
     return {
       providerName: getCell("Provider Name"),
@@ -116,7 +134,9 @@ export function parseCsvRecords(csvText) {
       expirationDate: getCell("Expiration Date"),
       renewalSubmitted: getCell("Renewal Submitted"),
       renewalApproved: getCell("Renewal Approved") || "No",
-      owner: getCell("Owner"),
+      owner: clinicName,
+      clinicName,
+      clinicContactEmail,
       notes: getCell("Notes")
     };
   });
@@ -128,17 +148,18 @@ export function createTemplateCsv() {
   const exampleRow = [
     "Avery Brooks",
     "1234567890",
-    "avery.brooks@northstarhealth.org",
+    "avery.brooks@provider.example",
     "Cardiology",
     "DEA",
     "AB1234567",
     "TX",
-    "02/12/2023",
-    "05/17/2026",
-    "04/22/2026",
+    "02/12/2025",
+    "05/17/2027",
+    "0",
     "No",
-    "Maria Gomez",
-    "Renewal in progress"
+    "Horizon Medical Clinic",
+    "practice.manager@horizonmedical.example",
+    "Renewal outreach in progress"
   ];
 
   const rows = [REQUIRED_IMPORT_COLUMNS, exampleRow];
