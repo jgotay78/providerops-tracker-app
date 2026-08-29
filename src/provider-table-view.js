@@ -1,3 +1,6 @@
+import "./provider-view.css";
+import "./provider-table-view.css";
+
 const PREFERRED_CREDENTIAL_ORDER = [
   "State License",
   "DEA",
@@ -149,18 +152,7 @@ function horizontalizeDirectory() {
   }
 }
 
-function injectMatrixStyles() {
-  if (document.querySelector('link[data-provider-matrix="true"]')) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = "/src/provider-table-view.css";
-  link.dataset.providerMatrix = "true";
-  document.head.append(link);
-}
-
 function startMatrixView() {
-  injectMatrixStyles();
-
   const startObserver = () => {
     const list = document.querySelector("#provider-directory-list");
     if (!list) {
