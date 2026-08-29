@@ -1,0 +1,55 @@
+.clinic-view-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.clinic-view-banner strong {
+  font-size: 0.9rem;
+}
+
+.clinic-view-banner span {
+  font-size: 0.8rem;
+}
+
+.clinic-viewer-mode [data-add-provider-credential],
+.clinic-viewer-mode [data-provider-action="edit"],
+.clinic-viewer-mode [data-provider-action="delete"],
+.clinic-viewer-mode [data-provider-action="reminder"],
+.clinic-viewer-mode [data-provider-toolbar="import"],
+.clinic-viewer-mode [data-provider-toolbar="template"],
+.clinic-viewer-mode [data-provider-toolbar="reset"] {
+  display: none !important;
+}
+
+.clinic-viewer-mode .matrix-actions .credential-mini-btn:not(:first-child) {
+  display: none !important;
+}
+
+.matrix-clinic,
+.matrix-clinic-contact {
+  min-width: 210px;
+}
+
+.matrix-clinic strong {
+  display: block;
+  color: #0f172a;
+}
+
+.matrix-clinic-contact {
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px) {
+  .clinic-view-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
