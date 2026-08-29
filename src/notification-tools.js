@@ -15,24 +15,38 @@ function fallbackEmail(email) {
   return String(email || "").trim() || "No Email Configured";
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function formatReminderWindow(reminderType, daysRemaining) {
   if (reminderType === "Expired") {
     return "already expired";
   }
+  if (typeof daysRemaining === "number" && Number.isFinite(daysRemaining)) {
+    if (daysRemaining === 0) {
+      return "today";
+    }
+    if (daysRemaining > 0) {
+      return `in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`;
+    }
+  }
   if (reminderType === "7-Day") {
-    return "in 7 days";
+    return "within 7 days";
   }
   if (reminderType === "14-Day") {
-    return "in 14 days";
+    return "within 14 days";
   }
   if (reminderType === "30-Day") {
-    return "in 30 days";
+    return "within 30 days";
   }
   if (reminderType === "60-Day") {
-    return "in 60 days";
-  }
-  if (typeof daysRemaining === "number") {
-    return `in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`;
+    return "within 60 days";
   }
   return "soon";
 }
@@ -85,7 +99,8 @@ export function buildReminderSubject({ credentialType, reminderType, daysRemaini
     return `Expired Credential Notice: ${credential} is expired`;
   }
   if (reminderType === "7-Day" || (typeof daysRemaining === "number" && daysRemaining <= 7)) {
-    return `Urgent Credential Notice: ${credential} expires in 7 days`;
+    const timing = formatReminderWindow(reminderType, daysRemaining);
+    return `Urgent Credential Notice: ${credential} expires ${timing}`;
   }
   return `Credential Expiration Reminder: ${credential} expires ${formatReminderWindow(reminderType, daysRemaining)}`;
 }
@@ -112,16 +127,18 @@ function buildReminderTextContent({ providerName, credentialType, expirationDate
 }
 
 function buildReminderHtmlContent({ providerName, credentialType, expirationDate, daysRemaining, reminderType }) {
-  const expDate = formatDate(expirationDate);
-  const windowText = formatReminderWindow(reminderType, daysRemaining);
+  const expDate = escapeHtml(formatDate(expirationDate));
+  const safeProviderName = escapeHtml(providerName || "Provider");
+  const safeCredentialType = escapeHtml(credentialType || "Credential");
+  const windowText = escapeHtml(formatReminderWindow(reminderType, daysRemaining));
   const intro =
     reminderType === "Expired"
-      ? `Our records show your <strong>${credentialType}</strong> credential expired on <strong>${expDate}</strong>.`
-      : `Our records show your <strong>${credentialType}</strong> credential is scheduled to expire on <strong>${expDate}</strong> (${windowText}).`;
+      ? `Our records show your <strong>${safeCredentialType}</strong> credential expired on <strong>${expDate}</strong>.`
+      : `Our records show your <strong>${safeCredentialType}</strong> credential is scheduled to expire on <strong>${expDate}</strong> (${windowText}).`;
 
   return `
     <div style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.5;">
-      <p>Hello ${providerName},</p>
+      <p>Hello ${safeProviderName},</p>
       <p>${intro}</p>
       <p>Please submit updated documentation to the credentialing team as soon as possible.</p>
       <p>If this has already been submitted, please disregard or contact the credentialing team.</p>
@@ -215,7 +232,6 @@ export function simulateSendReminder({
       actionType,
       providerResponseId,
       errorMessage,
-      actionType,
       notes
     }
   };
