@@ -11,6 +11,22 @@ export const REQUIRED_IMPORT_COLUMNS = [
   "Renewal Submitted",
   "Renewal Approved",
   "Clinic / Practice",
+  "Notes"
+];
+
+export const TEMPLATE_COLUMNS = [
+  "Provider Name",
+  "NPI",
+  "Provider Email",
+  "Specialty",
+  "Credential Type",
+  "Credential Number",
+  "State",
+  "Issue Date",
+  "Expiration Date",
+  "Renewal Submitted",
+  "Renewal Approved",
+  "Clinic / Practice",
   "Clinic Contact Email",
   "Notes"
 ];
@@ -162,7 +178,7 @@ export function createTemplateCsv() {
     "Renewal outreach in progress"
   ];
 
-  const rows = [REQUIRED_IMPORT_COLUMNS, exampleRow];
+  const rows = [TEMPLATE_COLUMNS, exampleRow];
   return rows
     .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
     .join("\n");
