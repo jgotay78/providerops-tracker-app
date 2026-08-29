@@ -3,7 +3,6 @@ import { parseCsvRecords } from "./csv-tools.js";
 import {
   dedupeCredentialRecords,
   findDuplicateCredential,
-  getCredentialIdentity,
   groupRecordsByProvider,
   uniqueProviderCount
 } from "./provider-tools.js";
@@ -12,10 +11,13 @@ const STORAGE_KEY = "credentialing-tracker-v1";
 const NOTIFICATION_STATE_KEY = "credentialing-tracker-notification-state-v1";
 const NOTIFICATION_HISTORY_KEY = "credentialing-tracker-notification-history-v1";
 const PREFILL_KEY = "providerops-provider-prefill";
+const DEMO_VERSION_KEY = "providerops-provider-demo-version";
+const DEMO_VERSION = "provider-centric-v1";
 const DEMO_NPIS = new Set(["1234567890", "2345678901", "3456789012", "4567890123", "5678901234", "6789012345"]);
 let cachedRecords = [];
 let renderTimer = null;
 let providerSearch = "";
+let editingRecordId = "";
 
 function addDays(days) {
   const date = new Date();
@@ -174,42 +176,37 @@ function buildDemoRecords() {
 }
 
 function isDemoDataset(records) {
-  if (!Array.isArray(records) || records.length === 0) {
-    return true;
-  }
-  return records.every((record) => DEMO_NPIS.has(String(record?.providerId || "").trim()));
+  return Array.isArray(records) && records.length > 0 && records.every((record) => DEMO_NPIS.has(String(record?.providerId || "").trim()));
 }
 
 function seedAndCleanFallbackData() {
-  if (isSupabaseConfigured || typeof localStorage === "undefined") {
-    return;
-  }
+  if (isSupabaseConfigured || typeof localStorage === "undefined") return;
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const existing = raw ? JSON.parse(raw) : [];
-    if (isDemoDataset(existing)) {
+    const demoVersion = localStorage.getItem(DEMO_VERSION_KEY);
+
+    if (!Array.isArray(existing) || existing.length === 0 || (isDemoDataset(existing) && demoVersion !== DEMO_VERSION)) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(buildDemoRecords()));
+      localStorage.setItem(DEMO_VERSION_KEY, DEMO_VERSION);
       return;
     }
 
-    if (Array.isArray(existing)) {
-      const deduped = dedupeCredentialRecords(existing);
-      if (deduped.length !== existing.length) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
-      }
+    const deduped = dedupeCredentialRecords(existing);
+    if (deduped.length !== existing.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
     }
   } catch {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(buildDemoRecords()));
+    localStorage.setItem(DEMO_VERSION_KEY, DEMO_VERSION);
   }
 }
 
 seedAndCleanFallbackData();
 
 function injectStyles() {
-  if (document.querySelector('link[data-provider-view="true"]')) {
-    return;
-  }
+  if (document.querySelector('link[data-provider-view="true"]')) return;
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = "/src/provider-view.css";
@@ -232,13 +229,9 @@ function escapeHtml(value) {
 
 function daysUntil(dateString) {
   const raw = clean(dateString);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return null;
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
   const target = new Date(`${raw}T12:00:00`);
-  if (Number.isNaN(target.getTime())) {
-    return null;
-  }
+  if (Number.isNaN(target.getTime())) return null;
   const today = new Date();
   today.setHours(12, 0, 0, 0);
   return Math.round((target.getTime() - today.getTime()) / 86400000);
@@ -246,26 +239,22 @@ function daysUntil(dateString) {
 
 function formatDate(dateString) {
   const raw = clean(dateString);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return "Missing";
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "Missing";
   const [year, month, day] = raw.split("-");
   return `${month}/${day}/${year}`;
 }
 
 function statusFor(record) {
   const days = daysUntil(record.expirationDate);
-  if (days === null) return { label: "Missing Expiration", className: "risk-missing", rank: 4 };
+  if (days === null) return { label: "Missing Expiration", className: "risk-missing", rank: 2 };
   if (days < 0) return { label: "Expired", className: "risk-expired", rank: 0 };
   if (days <= 30) return { label: `Due in ${days}d`, className: "risk-due", rank: 1 };
-  if (days <= 60) return { label: `Due in ${days}d`, className: "risk-watch", rank: 2 };
-  return { label: "Active", className: "risk-active", rank: 3 };
+  if (days <= 60) return { label: `Due in ${days}d`, className: "risk-watch", rank: 3 };
+  return { label: "Active", className: "risk-active", rank: 4 };
 }
 
 function providerRisk(provider) {
-  return provider.credentials
-    .map((record) => statusFor(record))
-    .sort((a, b) => a.rank - b.rank)[0] || { label: "Active", className: "risk-active", rank: 3 };
+  return provider.credentials.map(statusFor).sort((a, b) => a.rank - b.rank)[0] || { label: "Active", className: "risk-active", rank: 4 };
 }
 
 function nextExpiration(provider) {
@@ -273,8 +262,7 @@ function nextExpiration(provider) {
     .map((record) => ({ record, days: daysUntil(record.expirationDate) }))
     .filter((item) => item.days !== null)
     .sort((a, b) => a.days - b.days);
-  const future = dated.find((item) => item.days >= 0);
-  return future || dated[0] || null;
+  return dated.find((item) => item.days >= 0) || dated[0] || null;
 }
 
 function mapDbRecord(row) {
@@ -302,9 +290,7 @@ async function loadRecords() {
     const { data: sessionData } = await supabase.auth.getSession();
     if (sessionData?.session?.user) {
       const { data, error } = await supabase.from("provider_records").select("*").order("created_at", { ascending: false });
-      if (!error) {
-        return (data || []).map(mapDbRecord);
-      }
+      if (!error) return (data || []).map(mapDbRecord);
     }
   }
 
@@ -328,8 +314,7 @@ function createDirectoryPanel() {
   let panel = document.querySelector("#provider-directory-panel");
   if (panel) return panel;
 
-  const recordsBody = document.querySelector("#records-body");
-  const legacyPanel = recordsBody?.closest("section.panel");
+  const legacyPanel = document.querySelector("#records-body")?.closest("section.panel");
   if (!legacyPanel) return null;
 
   panel = document.createElement("section");
@@ -372,22 +357,19 @@ function updateLabels() {
   if (formPanel && !formPanel.querySelector(".provider-form-note")) {
     const note = document.createElement("p");
     note.className = "provider-form-note";
-    note.textContent = "Enter an existing NPI to reuse that provider's information. The app blocks duplicate credential records for the same provider, credential type, and state.";
+    note.textContent = "Enter an existing NPI to reuse that provider's information. Duplicate credentials are blocked by provider, credential type, and state.";
     heading?.insertAdjacentElement("afterend", note);
   }
 
   const heroCopy = document.querySelector(".hero-copy");
-  if (heroCopy) {
-    heroCopy.textContent = "Manage each provider once, keep all credentials together, monitor expiration risk, and coordinate renewal outreach from one operations view.";
-  }
+  if (heroCopy) heroCopy.textContent = "Manage each provider once, keep all credentials together, monitor expiration risk, and coordinate renewal outreach from one operations view.";
 
   const statusTitle = document.querySelector("#status-pie")?.closest(".chart-card")?.querySelector("h3");
   if (statusTitle) statusTitle.textContent = "Credential Status Distribution";
   const ownerTitle = document.querySelector("#owner-pie")?.closest(".chart-card")?.querySelector("h3");
   if (ownerTitle) ownerTitle.textContent = "Credential Workload by Owner";
 
-  const notifications = document.querySelector("#notifications-body")?.closest("section.panel");
-  const notificationHeading = notifications?.querySelector("h2");
+  const notificationHeading = document.querySelector("#notifications-body")?.closest("section.panel")?.querySelector("h2");
   if (notificationHeading) notificationHeading.textContent = "Credential Notifications";
 }
 
@@ -397,9 +379,9 @@ function renderDirectory() {
   if (!panel || !list) return;
 
   const groups = groupRecordsByProvider(cachedRecords);
-  const q = providerSearch.toLowerCase();
+  const query = providerSearch.toLowerCase();
   const filtered = groups.filter((provider) => {
-    if (!q) return true;
+    if (!query) return true;
     const haystack = [
       provider.providerName,
       provider.npi,
@@ -408,7 +390,7 @@ function renderDirectory() {
       provider.owner,
       ...provider.credentials.flatMap((record) => [record.credentialType, record.credentialNumber, record.state])
     ].join(" ").toLowerCase();
-    return haystack.includes(q);
+    return haystack.includes(query);
   });
 
   const providerChip = panel.querySelector("#provider-count-chip");
@@ -416,8 +398,9 @@ function renderDirectory() {
   if (providerChip) providerChip.textContent = `${groups.length} Provider${groups.length === 1 ? "" : "s"}`;
   if (credentialChip) credentialChip.textContent = `${cachedRecords.length} Credential${cachedRecords.length === 1 ? "" : "s"}`;
 
+  const providerTotal = String(uniqueProviderCount(cachedRecords));
   const totalKpi = document.querySelector("#kpi-total");
-  if (totalKpi) totalKpi.textContent = String(uniqueProviderCount(cachedRecords));
+  if (totalKpi && totalKpi.textContent !== providerTotal) totalKpi.textContent = providerTotal;
 
   if (!filtered.length) {
     list.innerHTML = `<div class="provider-empty">No providers match your search.</div>`;
@@ -427,20 +410,18 @@ function renderDirectory() {
   list.innerHTML = filtered.map((provider) => {
     const risk = providerRisk(provider);
     const next = nextExpiration(provider);
-    const nextText = next
-      ? `${escapeHtml(next.record.credentialType)} · ${escapeHtml(formatDate(next.record.expirationDate))}`
-      : "No expiration dates";
+    const nextText = next ? `${escapeHtml(next.record.credentialType)} · ${escapeHtml(formatDate(next.record.expirationDate))}` : "No expiration dates";
 
     const credentials = provider.credentials.map((record) => {
       const status = statusFor(record);
-      const stateLabel = clean(record.state) || "N/A";
       const days = daysUntil(record.expirationDate);
       const daysText = days === null ? "Date missing" : days < 0 ? `${Math.abs(days)}d overdue` : `${days}d remaining`;
+      const canRemind = Boolean(clean(record.providerEmail)) && days !== null && days <= 60;
       return `
         <div class="provider-credential">
           <div class="credential-main">
             <strong>${escapeHtml(record.credentialType || "Credential")}</strong>
-            <span>${escapeHtml(stateLabel)} · ${escapeHtml(record.credentialNumber || "No credential number")}</span>
+            <span>${escapeHtml(clean(record.state) || "N/A")} · ${escapeHtml(record.credentialNumber || "No credential number")}</span>
           </div>
           <div class="credential-meta">
             <strong>${escapeHtml(formatDate(record.expirationDate))}</strong>
@@ -456,11 +437,10 @@ function renderDirectory() {
           <div class="credential-actions">
             <button class="credential-mini-btn" type="button" data-provider-action="details" data-record-id="${escapeHtml(record.id)}">Details</button>
             <button class="credential-mini-btn" type="button" data-provider-action="edit" data-record-id="${escapeHtml(record.id)}">Edit</button>
-            <button class="credential-mini-btn" type="button" data-provider-action="reminder" data-record-id="${escapeHtml(record.id)}">Reminder</button>
+            <button class="credential-mini-btn" type="button" data-provider-action="reminder" data-record-id="${escapeHtml(record.id)}" ${canRemind ? "" : "disabled"}>Reminder</button>
             <button class="credential-mini-btn danger" type="button" data-provider-action="delete" data-record-id="${escapeHtml(record.id)}">Delete</button>
           </div>
-        </div>
-      `;
+        </div>`;
     }).join("");
 
     return `
@@ -486,8 +466,7 @@ function renderDirectory() {
           </div>
         </div>
         <div class="provider-credentials">${credentials}</div>
-      </article>
-    `;
+      </article>`;
   }).join("");
 }
 
@@ -553,8 +532,7 @@ function candidateFromForm() {
 async function providerCentricImport(file) {
   const text = await file.text();
   const { records } = parseCsvRecords(text);
-  const current = await loadRecords();
-  const merged = current.slice();
+  const merged = (await loadRecords()).slice();
   let added = 0;
   let updated = 0;
 
@@ -565,11 +543,7 @@ async function providerCentricImport(file) {
       Object.assign(duplicate, incoming, { id: duplicate.id, lastUpdated: isoNow() });
       updated += 1;
     } else {
-      merged.push({
-        ...incoming,
-        id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
-        lastUpdated: isoNow()
-      });
+      merged.push({ ...incoming, id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, lastUpdated: isoNow() });
       added += 1;
     }
   }
@@ -579,7 +553,7 @@ async function providerCentricImport(file) {
     const user = sessionData?.session?.user;
     if (!user) throw new Error("Please log in before importing records.");
 
-    for (const record of merged) {
+    for (const record of dedupeCredentialRecords(merged)) {
       const payload = {
         id: record.id,
         user_id: user.id,
@@ -607,6 +581,17 @@ async function providerCentricImport(file) {
 
   showProviderToast(`CSV processed: ${added} added, ${updated} updated`, "success");
   setTimeout(() => globalThis.location?.reload(), 500);
+}
+
+function triggerLegacyAction(action, recordId) {
+  const selectors = {
+    details: `[data-details-id="${CSS.escape(recordId)}"]`,
+    edit: `[data-edit-id="${CSS.escape(recordId)}"]`,
+    delete: `[data-delete-id="${CSS.escape(recordId)}"]`,
+    reminder: `[data-open-reminder="${CSS.escape(recordId)}"]`
+  };
+  const selector = selectors[action];
+  if (selector) document.querySelector(selector)?.click();
 }
 
 function bindProviderEvents() {
@@ -641,14 +626,9 @@ function bindProviderEvents() {
     if (actionButton instanceof HTMLElement) {
       const action = actionButton.dataset.providerAction;
       const recordId = actionButton.dataset.recordId;
-      if (!recordId) return;
-      const selectorByAction = {
-        details: `[data-details-id="${CSS.escape(recordId)}"]`,
-        edit: `[data-edit-id="${CSS.escape(recordId)}"]`,
-        delete: `[data-delete-id="${CSS.escape(recordId)}"]`,
-        reminder: `[data-open-reminder="${CSS.escape(recordId)}"]`
-      };
-      document.querySelector(selectorByAction[action])?.click();
+      if (!recordId || actionButton.hasAttribute("disabled")) return;
+      if (action === "edit") editingRecordId = recordId;
+      triggerLegacyAction(action, recordId);
       return;
     }
 
@@ -661,6 +641,7 @@ function bindProviderEvents() {
     if (action === "reset") {
       if (!isSupabaseConfigured) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(buildDemoRecords()));
+        localStorage.setItem(DEMO_VERSION_KEY, DEMO_VERSION);
         localStorage.removeItem(NOTIFICATION_STATE_KEY);
         localStorage.removeItem(NOTIFICATION_HISTORY_KEY);
         globalThis.location?.reload();
@@ -676,19 +657,15 @@ function bindProviderEvents() {
       const provider = providerForNpi(npiInput.value);
       if (provider) {
         fillProviderFields(provider);
-        showProviderToast(`Existing provider found: ${provider.providerName}. Add the new credential below.`, "success");
+        showProviderToast(`Existing provider found: ${provider.providerName}. Add or update the credential below.`, "success");
       }
     });
   }
 
   form.addEventListener("submit", (event) => {
-    const submitButton = document.querySelector("#record-submit");
-    const editing = /save changes/i.test(submitButton?.textContent || "");
-    if (editing) return;
-
     const candidate = candidateFromForm();
     if (!candidate) return;
-    const duplicate = findDuplicateCredential(cachedRecords, candidate);
+    const duplicate = findDuplicateCredential(cachedRecords, candidate, editingRecordId);
     if (duplicate) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -696,7 +673,11 @@ function bindProviderEvents() {
         `${candidate.credentialType} already exists for NPI ${candidate.providerId}${candidate.state ? ` in ${candidate.state}` : ""}. Edit the existing credential instead of adding a duplicate.`,
         "error"
       );
+      return;
     }
+    setTimeout(() => {
+      editingRecordId = "";
+    }, 0);
   }, true);
 
   const fileInput = document.querySelector("#import-file");
@@ -706,21 +687,19 @@ function bindProviderEvents() {
     const file = target.files?.[0];
     if (!file) return;
     event.stopImmediatePropagation();
-    void providerCentricImport(file).catch((error) => {
-      showProviderToast(error instanceof Error ? error.message : "Import failed", "error");
-    });
+    void providerCentricImport(file).catch((error) => showProviderToast(error instanceof Error ? error.message : "Import failed", "error"));
   }, true);
 }
 
 function observeApp() {
   const recordsBody = document.querySelector("#records-body");
-  if (recordsBody) {
-    new MutationObserver(scheduleRefresh).observe(recordsBody, { childList: true, subtree: true });
-  }
+  if (recordsBody) new MutationObserver(scheduleRefresh).observe(recordsBody, { childList: true, subtree: true });
+
   const totalKpi = document.querySelector("#kpi-total");
   if (totalKpi) {
     new MutationObserver(() => {
-      totalKpi.textContent = String(uniqueProviderCount(cachedRecords));
+      const desired = String(uniqueProviderCount(cachedRecords));
+      if (totalKpi.textContent !== desired) totalKpi.textContent = desired;
     }).observe(totalKpi, { childList: true, characterData: true, subtree: true });
   }
 }
