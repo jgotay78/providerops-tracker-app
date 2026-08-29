@@ -1,1 +1,0 @@
-Provider matrix rendering is intentionally a presentation-only layer over the provider-centric credential model. It preserves existing event delegation and duplicate-prevention behavior while presenting one provider per table row with dynamic credential-type columns.
