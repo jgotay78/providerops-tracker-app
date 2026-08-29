@@ -26,10 +26,19 @@ create table if not exists public.provider_records (
   renewal_submitted text,
   renewal_approved text,
   owner text,
+  clinic_name text,
+  clinic_contact_email text,
   notes text,
   last_updated timestamptz default now(),
   created_at timestamptz default now()
 );
+
+alter table public.provider_records
+  add column if not exists clinic_name text,
+  add column if not exists clinic_contact_email text;
+
+create index if not exists provider_records_clinic_contact_email_idx
+  on public.provider_records (lower(clinic_contact_email));
 
 create table if not exists public.notification_history (
   id uuid primary key default gen_random_uuid(),
@@ -67,11 +76,16 @@ create policy "profiles_update_own"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
--- Provider records: each user can CRUD only their own records.
+-- Provider records: owner/editor has full CRUD. The designated clinic contact can
+-- read records assigned to their authenticated email, but cannot change them.
 drop policy if exists "provider_records_select_own" on public.provider_records;
-create policy "provider_records_select_own"
+drop policy if exists "provider_records_select_owner_or_clinic_contact" on public.provider_records;
+create policy "provider_records_select_owner_or_clinic_contact"
   on public.provider_records for select
-  using (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    or lower(coalesce(clinic_contact_email, '')) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
 
 drop policy if exists "provider_records_insert_own" on public.provider_records;
 create policy "provider_records_insert_own"
@@ -89,7 +103,7 @@ create policy "provider_records_delete_own"
   on public.provider_records for delete
   using (auth.uid() = user_id);
 
--- Notification history: each user can CRUD only their own history.
+-- Notification history stays private to the record owner/editor.
 drop policy if exists "notification_history_select_own" on public.notification_history;
 create policy "notification_history_select_own"
   on public.notification_history for select
