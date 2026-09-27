@@ -1,0 +1,300 @@
+              <button class="btn btn-secondary btn-small" type="button" data-history-load="${escapeHtml(record.id)}">${escapeHtml(i18n[state.uiLanguage].load)}</button>
+              <button class="btn btn-danger btn-small" type="button" data-history-delete="${escapeHtml(record.id)}">×</button>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+
+        list.querySelectorAll("[data-history-load]").forEach(button => button.addEventListener("click", () => {
+          const record = getHistory().find(item => item.id === button.dataset.historyLoad);
+          if (record) restoreForm(record.payload);
+          window.scrollTo({top: 0, behavior: "smooth"});
+        }));
+
+        list.querySelectorAll("[data-history-delete]").forEach(button => button.addEventListener("click", () => {
+          if (!window.confirm(i18n[state.uiLanguage].confirmDelete)) return;
+          const history = getHistory().filter(item => item.id !== button.dataset.historyDelete);
+          setHistory(history);
+          if (state.savedId === button.dataset.historyDelete) state.savedId = null;
+          renderHistory(); renderContactQueue();
+          persist();
+        }));
+      }
+
+      function clearJobFields() {
+        ["customerName","customerPhone","customerEmail","serviceDate","serviceAddress","discount","taxRate","deposit",
+          "hoursEach","laborRate","materialsCost","miles","otherCost","overheadCost","processingRate","internalNotes",
+          "notesEn","notesEs"].forEach(id => $(id).value = ["discount","taxRate","deposit","hoursEach","laborRate","materialsCost","miles","otherCost","overheadCost","processingRate"].includes(id) ? "0" : "");
+        $("workers").value = "1";
+        $("documentType").value = "estimate";
+        $("documentDate").value = isoToday();
+        $("dueDate").value = addDays(isoToday(), 14);
+        $("invoiceStatus").value = "unpaid";
+        $("amountPaid").value = "0";
+        $("newPaymentAmount").value = "0";
+        $("includePaymentLink").checked = true;
+        state.items = [];
+        addItem();
+        state.savedId = null;
+        state.signatureData = "";
+        state.signatureMode = "draw";
+        state.typedSignature = "";
+        state.signedDate = "";
+        state.approvalKey = ""; state.approvalRecord = null;
+        state.lastPaymentAmount = 0;
+        state.lastPaymentDate = "";
+        state.contactLog = []; state.contactNext = ""; state.contactNotes = "";
+        state.contactDraft = {situation:"inquiry",tone:"professional",subject:"",message:""};
+        ["contactNext","contactNotes","contactSubject","contactMessage"].forEach(id => $(id).value = "");
+        $("contactSituation").value = "inquiry"; $("contactTone").value = "professional";
+        renderContactLog(); renderContactQueue();
+        const current = Math.max(1, Math.round(num($("nextQuoteNumber").value) || 1001));
+        $("nextQuoteNumber").value = current + 1;
+        state.quoteNumber = makeQuoteNumber();
+        calculateAndRender();
+        persist();
+      }
+
+      function newQuote() {
+        if (!window.confirm(i18n[state.uiLanguage].confirmNew)) return;
+        clearJobFields();
+        showToast(i18n[state.uiLanguage].newStarted);
+      }
+
+      // Unlike New document, this clears *both* business and job fields. Only the
+      // current draft is reset: previously saved estimates/invoices are retained.
+      function clearAllFields() {
+        if (!window.confirm("Clear ALL fields in the current form? Saved estimates and invoices will NOT be deleted.")) return;
+
+        // Remove the persisted current draft first so nothing stale can repopulate
+        // while this reset is in progress. Saved document history uses a separate key.
+        try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+
+        // Clear every current-form field explicitly. Do not call New document here,
+        // because that helper persists an intermediate state by design.
+        const blankIds = [
+          "businessName","businessPhone","businessEmail","businessAddress",
+          "customerName","customerPhone","customerEmail","serviceAddress","serviceDate",
+          "paymentLink","paymentInstructions","stripePaymentLink","paypalPayment",
+          "venmoPayment","zellePayment","cashAppPayment","otherPaymentLabel","otherPayment",
+          "notesEn","notesEs","termsEn","termsEs","internalNotes",
+          "contactNotes","contactNext","contactSubject","contactMessage",
+          "typedSignatureInput"
+        ];
+        blankIds.forEach(id => {
+          const field = $(id);
+          if (!field) return;
+          field.value = "";
+          // Help browsers forget their displayed/autofilled value immediately.
+          field.removeAttribute("value");
+        });
+
+        const numericDefaults = {
+          discount:"0", taxRate:"0", deposit:"0", validDays:"14",
+          workers:"1", hoursEach:"0", laborRate:"0", materialsCost:"0",
+          miles:"0", mileCost:"0", otherCost:"0", overheadCost:"0",
+          processingRate:"0", targetMargin:"0", amountPaid:"0", newPaymentAmount:"0"
+        };
+        Object.entries(numericDefaults).forEach(([id,value]) => {
+          const field = $(id); if (field) field.value = value;
+        });
+
+        // Reset document/payment controls to a predictable new-estimate state.
+        if ($("logoInput")) $("logoInput").value = "";
+        if ($("includePaymentLink")) $("includePaymentLink").checked = true;
+        if ($("primaryPaymentMethod")) $("primaryPaymentMethod").value = "auto";
+        if ($("quoteLanguage")) $("quoteLanguage").value = EDITION_LANGUAGE;
+        if ($("documentType")) $("documentType").value = "estimate";
+        if ($("invoiceStatus")) $("invoiceStatus").value = "unpaid";
+        if ($("documentDate")) $("documentDate").value = isoToday();
+        if ($("dueDate")) $("dueDate").value = addDays(isoToday(),14);
+        if ($("contactSituation")) $("contactSituation").value = "inquiry";
+        if ($("contactTone")) $("contactTone").value = "professional";
+
+        // Reset the current document state while leaving saved history untouched.
+        state.logoData = "";
+        state.savedId = null;
+        state.items = [];
+        state.signatureData = "";
+        state.signatureMode = "draw";
+        state.typedSignature = "";
+        state.signedDate = "";
+        state.approvalKey = "";
+        state.approvalRecord = null;
+        state.lastPaymentAmount = 0;
+        state.lastPaymentDate = "";
+        state.contactNext = "";
+        state.contactNotes = "";
+        state.contactLog = [];
+        state.contactDraft = {situation:"inquiry",tone:"professional",subject:"",message:""};
+
+        // Start with exactly one blank service row.
+        state.items.push({
+          id: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
+          descriptionEn:"", descriptionEs:"", qty:1, rate:0
+        });
+
+        // Keep document numbering/settings, but create a fresh current reference.
+        state.quoteNumber = makeQuoteNumber();
+
+        renderSignatureMode();
+        renderItems();
+        renderContactLog();
+        renderContactQueue();
+        calculateAndRender();
+
+        // Persist exactly the blank draft. This makes the clear survive reopening.
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(captureForm())); } catch (_) {}
+        showToast("All current fields cleared. Saved documents are unchanged.");
+      }
+
+      function exportBackup() {
+        const data = {
+          product: "Bilingual Service Quote, Invoice & Profit Builder",
+          exportedAt: new Date().toISOString(),
+          current: captureForm(),
+          history: getHistory()
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `estimate-invoice-builder-backup-${isoToday()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast(i18n[state.uiLanguage].backupSaved);
+      }
+
+      async function importBackup(file) {
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          const compatibleProducts = ["Bilingual Service Quote & Profit Builder", "Bilingual Estimate, Invoice & Profit Builder", "Bilingual Service Quote, Invoice & Profit Builder"];
+          if (!compatibleProducts.includes(data.product) || !data.current || !Array.isArray(data.history)) throw new Error("Invalid");
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(data.history));
+          restoreForm(data.current);
+          persist();
+          renderHistory(); renderContactQueue();
+          showToast(i18n[state.uiLanguage].backupRestored);
+        } catch {
+          showToast(i18n[state.uiLanguage].invalidBackup);
+        }
+      }
+
+      function handleLogo(file) {
+        if (!file) return;
+        if (file.size > 900000) {
+          showToast(state.uiLanguage === "es" ? "Usa un logo menor de 900 KB." : "Please use a logo smaller than 900 KB.");
+          $("logoInput").value = "";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          state.logoData = reader.result;
+          calculateAndRender();
+          persist();
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function removeLogo() {
+        state.logoData = "";
+        $("logoInput").value = "";
+        calculateAndRender();
+        persist();
+        showToast(i18n[state.uiLanguage].logoRemoved);
+      }
+
+
+      function quoteEmailData() {
+        const calc = calculations();
+        const language = $("quoteLanguage").value || "en";
+        const type = documentType();
+        const business = $("businessName").value.trim() || (language === "es" ? "Nuestro negocio" : "Our business");
+        const customer = $("customerName").value.trim() || (language === "es" ? "Cliente" : "Customer");
+        const isPaid = type === "invoice" && calc.total > 0 && positive($("amountPaid").value) >= calc.total - .004;
+        const options = $("includePaymentLink").checked && !isPaid ? paymentOptions() : [];
+        const descriptions = state.items
+          .filter(item => (item.descriptionEn || item.descriptionEs) && (positive(item.qty) || positive(item.rate)))
+          .map(item => language === "es" ? (item.descriptionEs || item.descriptionEn) : (item.descriptionEn || item.descriptionEs))
+          .filter(Boolean)
+          .slice(0, 8);
+        const docWord = type === "invoice"
+          ? (language === "es" ? "Factura" : language === "both" ? "Invoice / Factura" : "Invoice")
+          : (language === "es" ? "Estimado" : language === "both" ? "Estimate / Estimado" : "Estimate");
+        const serviceList = descriptions.length ? descriptions.map(item => `• ${item}`).join("\n") : (language === "es" ? "• Servicios indicados en el documento" : "• Services shown in the document");
+        let subject, greeting, intro, summaryTitle, totalLabel, paidLabel, balanceLabel, closing, paymentHeading;
+        const amountPaid = type === "invoice" ? Math.min(positive($("amountPaid").value), calc.total) : calc.deposit;
+        const balance = type === "invoice" ? Math.max(0, calc.total - amountPaid) : calc.balance;
+        if (language === "es") {
+          subject = `${docWord} ${state.quoteNumber} de ${business}`;
+          greeting = `Hola ${customer},`;
+          intro = type === "invoice" ? `Adjunto encontrarás la factura ${state.quoteNumber} por el trabajo indicado.` : `Adjunto encontrarás el estimado ${state.quoteNumber} para el trabajo solicitado.`;
+          summaryTitle = "Resumen"; totalLabel = "Total"; paidLabel = type === "invoice" ? "Monto pagado" : "Depósito solicitado"; balanceLabel = type === "invoice" ? "Balance pendiente" : "Balance restante";
+          closing = "Gracias por la oportunidad de servirle."; paymentHeading = "Opciones de pago";
+        } else if (language === "both") {
+          subject = `${docWord} ${state.quoteNumber} — ${business}`;
+          greeting = `Hello / Hola ${customer},`;
+          intro = type === "invoice" ? `Here is invoice ${state.quoteNumber} for the listed work. / Aquí está la factura ${state.quoteNumber} por el trabajo indicado.` : `Here is estimate ${state.quoteNumber} for the requested work. / Aquí está el estimado ${state.quoteNumber} para el trabajo solicitado.`;
+          summaryTitle = "Summary / Resumen"; totalLabel = "Total"; paidLabel = type === "invoice" ? "Amount paid / Pagado" : "Deposit / Depósito"; balanceLabel = type === "invoice" ? "Balance due / Pendiente" : "Balance / Balance";
+          closing = "Thank you for your business. / Gracias por su confianza."; paymentHeading = "Payment options / Opciones de pago";
+        } else {
+          subject = `${docWord} ${state.quoteNumber} from ${business}`;
+          greeting = `Hello ${customer},`;
+          intro = type === "invoice" ? `Here is invoice ${state.quoteNumber} for the listed work.` : `Here is estimate ${state.quoteNumber} for the requested work.`;
+          summaryTitle = "Summary"; totalLabel = "Total"; paidLabel = type === "invoice" ? "Amount paid" : "Deposit requested"; balanceLabel = type === "invoice" ? "Balance due" : "Remaining balance";
+          closing = "Thank you for your business."; paymentHeading = "Payment options";
+        }
+        if (type === "invoice" && state.approvalRecord) {
+          intro += language === "es" ? ` Factura correspondiente al estimado firmado ${state.approvalRecord.reference}, aprobado por ${state.approvalRecord.signedName} el ${state.approvalRecord.signedAt.slice(0,10)}.` : language === "both" ? ` Issued for signed estimate ${state.approvalRecord.reference}, approved on ${state.approvalRecord.signedAt.slice(0,10)}. / Factura del estimado firmado y aprobado.` : ` Issued for signed estimate ${state.approvalRecord.reference}, approved by ${state.approvalRecord.signedName} on ${state.approvalRecord.signedAt.slice(0,10)}.`;
+        }
+        const paymentPlain = options.length ? ["", paymentHeading, ...options.map(option => `${option.label}: ${option.value}`)] : [];
+        const showPaidRows = type === "invoice" || amountPaid > 0;
+        const customerAttachHelp = type === "estimate"
+          ? "Please open the attached signable HTML estimate in your browser, review the prices and terms, type or draw your signature, approve it, and reply with the downloaded SIGNED-ESTIMATE HTML file attached. Signing does not charge you."
+          : "Please review the attached invoice PDF and use the payment instructions below if a balance is due.";
+        const plain = [
+          greeting, "", intro, "", customerAttachHelp, "", serviceList, "", summaryTitle,
+          `${totalLabel}: ${currency(calc.total)}`,
+          showPaidRows ? `${paidLabel}: ${currency(amountPaid)}` : "",
+          showPaidRows ? `${balanceLabel}: ${currency(balance)}` : "",
+          ...paymentPlain,
+          "", closing,
+          $("businessPhone").value.trim(), $("businessEmail").value.trim()
+        ].filter((line, index, array) => line !== "" || (index > 0 && array[index-1] !== "")).join("\n").trim();
+        const accent = $("accentColor").value || "#087f73";
+        const listHtml = descriptions.length ? `<ul style="padding-left:20px;margin:12px 0">${descriptions.map(item => `<li style="margin:4px 0">${escapeHtml(item)}</li>`).join("")}</ul>` : "";
+        const paymentHtml = options.length ? `<div style="margin:20px 0;padding:14px 16px;border:1px solid #e3e8ef;border-radius:12px"><strong>${escapeHtml(paymentHeading)}</strong>${options.map(option => option.url ? `<div style="margin-top:10px"><a href="${escapeHtml(option.url)}" style="display:inline-block;padding:10px 14px;border-radius:9px;background:#e5a62f;color:#17120a;text-decoration:none;font-weight:800">${escapeHtml(option.label)}</a><div style="margin-top:5px;font-size:11px;color:#5f6775;word-break:break-all">${escapeHtml(option.value)}</div></div>` : `<div style="margin-top:10px"><strong>${escapeHtml(option.label)}:</strong> ${escapeHtml(option.value)}</div>`).join("")}</div>` : "";
+        const rich = `<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.55;max-width:650px"><p>${escapeHtml(greeting)}</p><p>${escapeHtml(intro)}</p><p>${escapeHtml(customerAttachHelp)}</p>${listHtml}<div style="margin:18px 0;padding:14px 16px;border-left:4px solid ${escapeHtml(accent)};background:#f5f7fa"><strong>${escapeHtml(summaryTitle)}</strong><div style="margin-top:8px">${escapeHtml(totalLabel)}: <strong>${escapeHtml(currency(calc.total))}</strong></div>${showPaidRows ? `<div>${escapeHtml(paidLabel)}: <strong>${escapeHtml(currency(amountPaid))}</strong></div><div>${escapeHtml(balanceLabel)}: <strong>${escapeHtml(currency(balance))}</strong></div>` : ""}</div>${paymentHtml}<p>${escapeHtml(closing)}</p><p style="font-size:12px;color:#687386">${escapeHtml(business)}${$("businessPhone").value.trim() ? `<br>${escapeHtml($("businessPhone").value.trim())}` : ""}${$("businessEmail").value.trim() ? `<br>${escapeHtml($("businessEmail").value.trim())}` : ""}</p></div>`;
+        return {subject, plain, rich, customer, email: $("customerEmail").value.trim(), paymentUrl: primaryPaymentOption()?.url || ""};
+      }
+
+      function paymentReceiptEmailData() {
+        const calc = calculations();
+        const language = $("quoteLanguage").value || "en";
+        const business = $("businessName").value.trim() || (language === "es" ? "Nuestro negocio" : "Our business");
+        const customer = $("customerName").value.trim() || (language === "es" ? "Cliente" : "Customer");
+        const totalPaid = Math.min(positive($("amountPaid").value), calc.total);
+        const payment = Math.min(positive(state.lastPaymentAmount), totalPaid || calc.total);
+        const balance = Math.max(0, calc.total - totalPaid);
+        const paidInFull = balance <= 0.004;
+        const dueDate = $("dueDate").value ? formatDate($("dueDate").value) : "";
+        const paymentDate = state.lastPaymentDate ? formatDate(state.lastPaymentDate) : formatDate(isoToday());
+        const options = (!paidInFull && $("includePaymentLink").checked) ? paymentOptions() : [];
+        let subject, greeting, intro, statusMessage, summaryTitle, invoiceTotalLabel, paymentLabel, totalPaidLabel, balanceLabel, paymentHeading, closing;
+        if (language === "es") {
+          subject = paidInFull ? `Gracias — pago recibido para la factura ${state.quoteNumber}` : `Pago recibido — factura ${state.quoteNumber} — balance ${currency(balance)}`;
+          greeting = `Hola ${customer},`;
+          intro = `¡Gracias! Recibimos su pago de ${currency(payment)} para la factura ${state.quoteNumber} el ${paymentDate}.`;
+          statusMessage = paidInFull ? "Su factura está pagada por completo. Gracias por su confianza." : `Queda un balance pendiente de ${currency(balance)}${dueDate ? `, con vencimiento el ${dueDate}` : ""}.`;
+          summaryTitle = "Recibo de pago"; invoiceTotalLabel = "Total de la factura"; paymentLabel = "Pago recibido"; totalPaidLabel = "Total pagado"; balanceLabel = "Balance pendiente"; paymentHeading = "Opciones para pagar el balance"; closing = "Gracias por su pago y por confiar en nuestro negocio.";
+        } else if (language === "both") {
+          subject = paidInFull ? `Thank you / Gracias — Payment received — Invoice ${state.quoteNumber}` : `Payment received / Pago recibido — Invoice ${state.quoteNumber} — ${currency(balance)} due`;
+          greeting = `Hello / Hola ${customer},`;
+          intro = `Thank you! We received your payment of ${currency(payment)} for invoice ${state.quoteNumber} on ${paymentDate}. / ¡Gracias! Recibimos su pago de ${currency(payment)} para la factura ${state.quoteNumber}.`;
+          statusMessage = paidInFull ? "Your invoice is paid in full. Thank you for your business! / Su factura está pagada por completo. ¡Gracias por su confianza!" : `Remaining balance / Balance pendiente: ${currency(balance)}${dueDate ? ` — Due / Vence: ${dueDate}` : ""}.`;
+          summaryTitle = "Payment receipt / Recibo de pago"; invoiceTotalLabel = "Invoice total / Total"; paymentLabel = "Payment received / Pago recibido"; totalPaidLabel = "Total paid / Total pagado"; balanceLabel = "Balance due / Pendiente"; paymentHeading = "Payment options / Opciones de pago"; closing = "Thank you for your payment. / Gracias por su pago.";
+        } else {
+          subject = paidInFull ? `Thank you — payment received for Invoice ${state.quoteNumber}` : `Payment received — Invoice ${state.quoteNumber} — ${currency(balance)} balance remaining`;
