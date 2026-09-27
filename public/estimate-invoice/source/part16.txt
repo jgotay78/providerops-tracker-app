@@ -1,0 +1,300 @@
+          greeting = `Hello ${customer},`;
+          intro = `Thank you! We received your payment of ${currency(payment)} for invoice ${state.quoteNumber} on ${paymentDate}.`;
+          statusMessage = paidInFull ? "Your invoice is now paid in full. Thank you for your business!" : `Your remaining balance is ${currency(balance)}${dueDate ? ` and is due by ${dueDate}` : ""}.`;
+          summaryTitle = "Payment receipt"; invoiceTotalLabel = "Invoice total"; paymentLabel = "Payment received"; totalPaidLabel = "Total paid"; balanceLabel = "Balance due"; paymentHeading = "Payment options for the remaining balance"; closing = "Thank you for your payment and for your business.";
+        }
+        const paymentPlain = options.length ? ["", paymentHeading, ...options.map(option => `${option.label}: ${option.value}`)] : [];
+        const plain = [
+          greeting, "", intro, statusMessage, "", summaryTitle,
+          `${invoiceTotalLabel}: ${currency(calc.total)}`,
+          `${paymentLabel}: ${currency(payment)}`,
+          `${totalPaidLabel}: ${currency(totalPaid)}`,
+          `${balanceLabel}: ${currency(balance)}`,
+          ...paymentPlain, "", closing, $("businessPhone").value.trim(), $("businessEmail").value.trim()
+        ].filter((line, index, array) => line !== "" || (index > 0 && array[index-1] !== "")).join("\n").trim();
+        const accent = $("accentColor").value || "#087f73";
+        const paymentHtml = options.length ? `<div style="margin:20px 0;padding:14px 16px;border:1px solid #e3e8ef;border-radius:12px"><strong>${escapeHtml(paymentHeading)}</strong>${options.map(option => option.url ? `<div style="margin-top:10px"><a href="${escapeHtml(option.url)}" style="display:inline-block;padding:10px 14px;border-radius:9px;background:#e5a62f;color:#17120a;text-decoration:none;font-weight:800">${escapeHtml(option.label)}</a><div style="margin-top:5px;font-size:11px;color:#5f6775;word-break:break-all">${escapeHtml(option.value)}</div></div>` : `<div style="margin-top:10px"><strong>${escapeHtml(option.label)}:</strong> ${escapeHtml(option.value)}</div>`).join("")}</div>` : "";
+        const rich = `<div style="font-family:Arial,sans-serif;color:#172033;line-height:1.55;max-width:650px"><p>${escapeHtml(greeting)}</p><p>${escapeHtml(intro)}</p><p><strong>${escapeHtml(statusMessage)}</strong></p><div style="margin:18px 0;padding:14px 16px;border-left:4px solid ${escapeHtml(accent)};background:#f5f7fa"><strong>${escapeHtml(summaryTitle)}</strong><div style="margin-top:8px">${escapeHtml(invoiceTotalLabel)}: <strong>${escapeHtml(currency(calc.total))}</strong></div><div>${escapeHtml(paymentLabel)}: <strong>${escapeHtml(currency(payment))}</strong></div><div>${escapeHtml(totalPaidLabel)}: <strong>${escapeHtml(currency(totalPaid))}</strong></div><div>${escapeHtml(balanceLabel)}: <strong>${escapeHtml(currency(balance))}</strong></div></div>${paymentHtml}<p>${escapeHtml(closing)}</p><p style="font-size:12px;color:#687386">${escapeHtml(business)}${$("businessPhone").value.trim() ? `<br>${escapeHtml($("businessPhone").value.trim())}` : ""}${$("businessEmail").value.trim() ? `<br>${escapeHtml($("businessEmail").value.trim())}` : ""}</p></div>`;
+        return {subject, plain, rich, customer, email: $("customerEmail").value.trim(), paymentUrl: primaryPaymentOption()?.url || ""};
+      }
+
+      function currentEmailData() {
+        return activeEmailKind === "payment" ? paymentReceiptEmailData() : quoteEmailData();
+      }
+
+      function gmailComposeUrl(data, includeBody = true) {
+        const params = new URLSearchParams({view:"cm", fs:"1", to:data.email, su:data.subject});
+        if (includeBody) params.set("body", data.plain);
+        return `https://mail.google.com/mail/?${params.toString()}`;
+      }
+
+      function mailtoUrl(data) {
+        return `mailto:${encodeURIComponent(data.email)}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(data.plain)}`;
+      }
+
+      function renderRichEmailPreview() {
+        const data = currentEmailData();
+        $("sendCustomerName").textContent = data.customer;
+        $("sendCustomerEmail").textContent = data.email || i18n[state.uiLanguage].noCustomerEmail;
+        $("richEmailPreview").innerHTML = data.rich;
+        // Email text can be copied without opening another browser tab.
+      }
+
+      function openSendEstimateModal() {
+        activeEmailKind = "document";
+        $("attachmentSteps").hidden = false;
+        calculateAndRender();
+        const invoice = documentType() === "invoice";
+        $("sendEstimateTitle").textContent = invoice ? "Prepare invoice + email" : "Prepare signable HTML estimate + email";
+        $("sendEstimateHelp").textContent = invoice
+          ? "Save the invoice PDF first, then attach it in an email you create."
+          : "Download the signable HTML estimate first, then attach that file in an email you create.";
+        $("attachmentStepsTitle").textContent = invoice ? "Step 1: Save your invoice PDF" : "Step 1: Download the signable HTML estimate";
+        $("attachmentStepDescription").textContent = invoice
+          ? "Click below, choose Save as PDF in the print dialog, then attach the saved invoice PDF to your email."
+          : "The customer opens this HTML file in a browser, types or draws a signature, approves it, and returns the downloaded signed HTML file.";
+        $("prepareAttachmentButton").textContent = invoice ? "1. Open printable invoice (Save as PDF)" : "1. Download signable HTML estimate";
+        $("attachmentFileName").textContent = invoice
+          ? "Save the invoice PDF to your device, then attach it to your email."
+          : "The signable HTML estimate downloads to your device. Attach that file to your email.";
+        $("attachmentBlockNote").hidden = invoice;
+        if (!invoice) $("attachmentBlockNote").textContent = "The customer does not need a PDF signing app. They can type or draw their signature directly inside the HTML estimate in a browser.";
+        $("copyEmailTextButton").textContent = "2. Copy email message";
+        $("richEmailInstruction").textContent = invoice
+          ? "Step 2: Copy the email message. Step 3: Open your email, paste the message, attach the saved invoice PDF, confirm the attachment appears, and press Send."
+          : "Step 2: Copy the email message. Step 3: Open your email, paste the message, attach the downloaded signable HTML estimate, confirm the attachment appears, and press Send.";
+        renderRichEmailPreview();
+        showModal("sendEstimateModal");
+      }
+
+      async function copyRichAndMaybeOpenGmail(openGmail) {
+        const data = currentEmailData();
+        if (openGmail) {
+          if (!data.email) { showToast(i18n[state.uiLanguage].noCustomerEmail); return false; }
+          openOneEmailDraft();
+          return true;
+        }
+        const copied = await copyRichHtml(data.rich, data.plain);
+        showToast(i18n[state.uiLanguage].formattedCopied);
+        return copied;
+      }
+
+      function openPaymentThankYouModal() {
+        if (documentType() !== "invoice" || positive(state.lastPaymentAmount) <= 0) {
+          showToast(i18n[state.uiLanguage].noRecordedPayment);
+          return;
+        }
+        activeEmailKind = "payment";
+        $("attachmentSteps").hidden = true;
+        calculateAndRender();
+        const calc = calculations();
+        const balance = Math.max(0, calc.total - Math.min(positive($("amountPaid").value), calc.total));
+        $("sendEstimateTitle").textContent = state.uiLanguage === "es" ? "Agradecer el pago al cliente" : "Thank the customer for the payment";
+        $("sendEstimateHelp").textContent = state.uiLanguage === "es"
+          ? (balance > 0.004 ? "El email agradece el pago y muestra el balance pendiente en el mismo mensaje." : "El email agradece el pago y confirma que la factura quedó pagada por completo.")
+          : (balance > 0.004 ? "The email thanks the customer and shows the remaining balance in the same message." : "The email thanks the customer and confirms the invoice is paid in full.");
+        renderRichEmailPreview();
+        showModal("sendEstimateModal");
+      }
+
+      function recordPaymentAndThank() {
+        if (documentType() !== "invoice") {
+          showToast(state.uiLanguage === "es" ? "Convierte primero el documento a factura." : "Convert the document to an invoice first.");
+          return;
+        }
+        const calc = calculations();
+        const previousPaid = Math.min(positive($("amountPaid").value), calc.total);
+        const remainingBeforePayment = Math.max(0, calc.total - previousPaid);
+        if (remainingBeforePayment <= 0.004) {
+          showToast(i18n[state.uiLanguage].noBalanceDue);
+          return;
+        }
+        const enteredPayment = positive($("newPaymentAmount").value);
+        if (enteredPayment <= 0) {
+          showToast(i18n[state.uiLanguage].invalidPaymentAmount);
+          $("newPaymentAmount").focus();
+          return;
+        }
+        if (enteredPayment > remainingBeforePayment + 0.004) {
+          showToast(i18n[state.uiLanguage].paymentExceedsBalance);
+          $("newPaymentAmount").focus();
+          return;
+        }
+        const appliedPayment = enteredPayment;
+        const newTotalPaid = previousPaid + appliedPayment;
+        const remaining = Math.max(0, calc.total - newTotalPaid);
+        $("amountPaid").value = newTotalPaid.toFixed(2);
+        $("invoiceStatus").value = remaining <= 0.004 ? "paid" : "partial";
+        state.lastPaymentAmount = appliedPayment;
+        state.lastPaymentDate = isoToday();
+        $("newPaymentAmount").value = "0";
+        calculateAndRender();
+        persist();
+        saveQuote();
+        showToast(i18n[state.uiLanguage].paymentRecorded);
+        openPaymentThankYouModal();
+      }
+
+      function drawPaymentQr(text) {
+        const wrap = $("paymentQrWrap");
+        if (wrap.dataset.error === "1") wrap.innerHTML = '<canvas id="paymentQrCanvas" width="240" height="240"></canvas>';
+        const canvas = $("paymentQrCanvas");
+        const ctx = canvas.getContext("2d");
+        try {
+          const qr = new QRCore.QRCode(0, QRCore.ErrorLevel.M);
+          qr.addData(text);
+          qr.make();
+          const n = qr.getModuleCount(), quiet = 4, moduleSize = Math.max(3, Math.floor(250 / (n + quiet * 2))), size = (n + quiet * 2) * moduleSize;
+          canvas.width = size; canvas.height = size;
+          ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, size, size);
+          ctx.fillStyle = "#000";
+          for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) if (qr.isDark(row, col)) ctx.fillRect((col + quiet) * moduleSize, (row + quiet) * moduleSize, moduleSize, moduleSize);
+          canvas.hidden = false; wrap.dataset.error = "";
+        } catch {
+          canvas.hidden = true; wrap.dataset.error = "1";
+          wrap.innerHTML = `<p>${escapeHtml(i18n[state.uiLanguage].noPaymentLink)}</p>`;
+        }
+      }
+
+      function openPaymentQrModal() {
+        const option = primaryPaymentOption();
+        if (!option) {
+          const raw = $("paymentLink").value.trim();
+          showToast(raw ? "Paste a valid secure payment link, for example https://paypal.me/yourname." : "Add your payment link first, then click Payment QR.");
+          $("paymentLink").focus();
+          return;
+        }
+        const calc = calculations();
+        const invoice = documentType() === "invoice";
+        const amount = invoice ? Math.max(0, calc.total - positive($("amountPaid").value)) : (calc.deposit > 0 ? calc.deposit : calc.total);
+        $("paymentQrCustomer").textContent = `${$("customerName").value.trim() || "Customer"} · ${option.label} · ${currency(amount)}`;
+        $("paymentQrUrl").textContent = option.url;
+        drawPaymentQr(option.url);
+        showModal("paymentQrModal");
+      }
+
+      function convertToInvoice() {
+        if (documentType() === "invoice") {
+          showToast(i18n[state.uiLanguage].alreadyInvoice);
+          return;
+        }
+        $("documentType").value = "invoice";
+        if (!$("documentDate").value) $("documentDate").value = isoToday();
+        $("dueDate").value = $("dueDate").value || addDays($("documentDate").value, 14);
+        $("invoiceStatus").value = "unpaid";
+        $("amountPaid").value = "0";
+        $("newPaymentAmount").value = "0";
+        state.lastPaymentAmount = 0;
+        state.lastPaymentDate = "";
+        calculateAndRender();
+        persist();
+        showToast(i18n[state.uiLanguage].convertedInvoice);
+      }
+
+      function printQuote() {
+        calculateAndRender();
+        showToast(i18n[state.uiLanguage].saveBeforePrint);
+        setTimeout(() => window.print(), 200);
+      }
+
+      function contactMoney(v) { return currency(Math.round(Math.max(0,v)*100)/100); }
+      function contactGenerate() {
+        const es = $("quoteLanguage").value === "es", both = $("quoteLanguage").value === "both";
+        const name = $("customerName").value.trim() || (es ? "cliente" : "customer");
+        const business = $("businessName").value.trim() || (es ? "nuestro negocio" : "our business");
+        const ref = state.quoteNumber || "";
+        const total = calculations().total;
+        const paid = Math.min(positive($("amountPaid").value), total);
+        const balance = Math.max(0, total - paid);
+        const due = $("dueDate").value ? formatDate($("dueDate").value) : "";
+        const date = $("serviceDate").value ? formatDate($("serviceDate").value) : "";
+        const scenario = $("contactSituation").value;
+        const tone = $("contactTone").value;
+        if (scenario === "received" && positive(state.lastPaymentAmount) <= 0) {
+          showToast(es ? "Registra un pago primero para preparar el agradecimiento." : "Record a payment first before preparing a thank-you receipt.");
+          return;
+        }
+        if (["due","overdue"].includes(scenario) && balance <= .004) {
+          showToast(es ? "La factura ya está pagada; no hace falta reclamar un pago." : "This invoice is paid in full; no payment reminder is needed.");
+          return;
+        }
+        const link = $("includePaymentLink").checked ? (primaryPaymentOption()?.url || "") : "";
+        const note = $("paymentInstructions").value.trim();
+        const bodyEn = {
+          inquiry:`Thank you for reaching out to ${business}. Please let us know how we can help and the service you need.`,
+          estimate:`Following up on estimate ${ref} for ${contactMoney(total)}. Do you have any questions before deciding?`,
+          approval:`Your estimate ${ref} for ${contactMoney(total)} is ready for your review. Please reply to confirm whether you'd like to proceed.`,
+          schedule:`This is a confirmation of your appointment${date ? ` on ${date}` : ""}. Please reply if you need to change the schedule.`,
+          invoice:`I'm following up on invoice ${ref}. Invoice total: ${contactMoney(total)}. Amount paid: ${contactMoney(paid)}. ${balance > .004 ? `Remaining balance: ${contactMoney(balance)}${due ? `. Due: ${due}` : ""}.` : "This invoice is paid in full."}`,
+          due:`A quick reminder: invoice ${ref} has an outstanding balance of ${contactMoney(balance)}${due ? ` due ${due}` : ""}.`,
+          overdue:`Our records show invoice ${ref} has an outstanding balance of ${contactMoney(balance)}${due ? `, originally due ${due}` : ""}. Please reply with an update or payment confirmation.`,
+          received:`Thank you for your payment of ${contactMoney(positive(state.lastPaymentAmount))} on invoice ${ref}. Invoice total: ${contactMoney(total)}. Total paid: ${contactMoney(paid)}. ${balance > .004 ? `Remaining balance: ${contactMoney(balance)}${due ? `. Due: ${due}` : ""}.` : "Your invoice is paid in full!"}`,
+          completed:`Thank you for trusting ${business}. The work for ${ref} has been completed. Please let us know if anything needs attention.`,
+          review:`Thank you for choosing ${business}! If you have a moment, we'd appreciate your feedback on your experience.`, other:""
+        };
+        const bodyEs = {
+          inquiry:`Gracias por contactar a ${business}. Díganos qué servicio necesita y cómo podemos ayudarle.`,
+          estimate:`Damos seguimiento al estimado ${ref} por ${contactMoney(total)}. ¿Tiene alguna pregunta antes de decidir?`,
+          approval:`Su estimado ${ref} por ${contactMoney(total)} está listo para revisar. Responda para confirmar si desea continuar.`,
+          schedule:`Le confirmamos su cita${date ? ` para el ${date}` : ""}. Avísenos si necesita cambiar la fecha.`,
+          invoice:`Damos seguimiento a la factura ${ref}. Total: ${contactMoney(total)}. Pagado: ${contactMoney(paid)}. ${balance > .004 ? `Balance pendiente: ${contactMoney(balance)}${due ? `. Vence: ${due}` : ""}.` : "La factura está pagada por completo."}`,
+          due:`Recordatorio: la factura ${ref} tiene un balance pendiente de ${contactMoney(balance)}${due ? ` con vencimiento el ${due}` : ""}.`,
+          overdue:`Según nuestros registros, la factura ${ref} tiene un balance pendiente de ${contactMoney(balance)}${due ? `, vencido el ${due}` : ""}. Por favor, confirme el pago o infórmenos cuándo podrá realizarlo.`,
+          received:`¡Gracias por su pago de ${contactMoney(positive(state.lastPaymentAmount))} para la factura ${ref}! Total: ${contactMoney(total)}. Total pagado: ${contactMoney(paid)}. ${balance > .004 ? `Balance pendiente: ${contactMoney(balance)}${due ? `. Vence: ${due}` : ""}.` : "¡Su factura está pagada por completo!"}`,
+          completed:`Gracias por confiar en ${business}. Hemos completado el trabajo ${ref}. Contáctenos si necesita algo más.`,
+          review:`¡Gracias por elegir ${business}! Si tiene un momento, nos gustaría conocer su opinión sobre nuestro servicio.`, other:""
+        };
+        if (scenario === "other") { $("contactSubject").value=""; $("contactMessage").value=""; persist(); return; }
+        const en = bodyEn[scenario] || "", esp = bodyEs[scenario] || "";
+        const prefix = tone === "friendly" ? (es ? "¡Hola" : "Hi") : (es ? "Estimado/a" : "Hello");
+        const greet = `${prefix} ${name},`;
+        const tonePrefix = tone === "friendly" ? (both ? "Hope you're doing well! / ¡Espero que esté muy bien!\n\n" : es ? "¡Espero que esté muy bien!\n\n" : "Hope you're doing well!\n\n") : "";
+        const toneSuffix = tone === "firm" ? (both ? "\n\nPlease reply to confirm your next step. / Por favor, confirme cuál será el próximo paso." : es ? "\n\nPor favor, confirme cuál será el próximo paso." : "\n\nPlease reply to confirm your next step.") : "";
+        const message = both ? `${greet}\n\n${tonePrefix}${en}\n\n${esp}${toneSuffix}` : `${greet}\n\n${tonePrefix}${es ? esp : en}${toneSuffix}`;
+        const requestsPayment = ["invoice","due","overdue","received"].includes(scenario) && balance > .004;
+        const paymentPart = requestsPayment && link ? `\n\n${both ? "Pay now / Pagar ahora" : es ? "Pagar ahora" : "Pay now"}: ${link}` : "";
+        const notePart = requestsPayment && note ? `\n${note}` : "";
+        const closing = both ? `\n\nThank you / Gracias,\n${business}` : es ? `\n\nGracias,\n${business}` : `\n\nThank you,\n${business}`;
+        $("contactSubject").value = (es ? "Seguimiento" : "Follow-up") + ` — ${ref}`;
+        $("contactMessage").value = (message + paymentPart + notePart + closing).replaceAll("\\n","\n");
+        persist();
+      }
+      function contactUrl(kind) {
+        const msg = $("contactMessage").value.trim(), subject = $("contactSubject").value.trim();
+        if (!msg) { showToast(state.uiLanguage === "es" ? "Escribe o genera un mensaje primero." : "Write or generate a message first."); return ""; }
+        if (kind === "email") {
+          const email = $("customerEmail").value.trim();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast(state.uiLanguage === "es" ? "Añade un email válido para el cliente." : "Add a valid customer email first."); return ""; }
+          return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
+        }
+        const phone = $("customerPhone").value.replace(/[^0-9+]/g,"");
+        if (!/^\+?[0-9]{7,15}$/.test(phone)) { showToast(state.uiLanguage === "es" ? "Añade un teléfono válido del cliente, con código de país para WhatsApp." : "Add a valid customer phone, including country code for WhatsApp."); return ""; }
+        return kind === "text" ? `sms:${phone}?body=${encodeURIComponent(msg)}` : `https://api.whatsapp.com/send?phone=${encodeURIComponent(phone.replace(/^\+/,""))}&text=${encodeURIComponent(msg)}`;
+      }
+
+      // OFFLINE APPROVAL HANDOFF: Only customer-visible data is exported. The owner must send
+      // and receive files through their own email; importing the returned signed copy creates
+      // the invoice draft, but never sends email or charges a payment provider automatically.
+      const SIGNABLE_CUSTOMER_TEMPLATE = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Estimate review and signature</title>\n<style>\n:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#192639;background:#eff4f5}*{box-sizing:border-box}body{margin:0}\nmain{max-width:850px;margin:22px auto;background:white;padding:28px 34px;border-radius:14px;box-shadow:0 4px 30px #1112}h1{margin:8px 0 0;font-size:27px}h2{font-size:18px}p{line-height:1.5}small,.hint{color:#506275}header{display:flex;justify-content:space-between;gap:14px;border-bottom:2px solid #087f73;padding-bottom:15px}header img{max-height:85px;max-width:160px;object-fit:contain}table{border-collapse:collapse;width:100%;margin-top:15px}th,td{text-align:left;padding:10px 7px;border-bottom:1px solid #e0e5e8}th:nth-child(n+2),td:nth-child(n+2){text-align:right}.summary{text-align:right;font-size:20px;font-weight:800;margin:20px 0}.terms{white-space:pre-wrap;background:#f3f7f7;padding:13px;border-radius:8px}.notice{background:#eaf7f4;padding:13px;border-left:4px solid #087f73;border-radius:6px}.signature{border:1px solid #c6d1d5;border-radius:8px;width:100%;height:125px;touch-action:none;display:block}[hidden]{display:none!important}.signature-choices{display:flex;gap:8px;margin:8px 0}.signature-choices button{margin:0}.signature-choices button.active{background:#087f73}.signature-choices button:not(.active){background:#34475c}.typed-signature{width:100%;max-width:540px!important;height:90px;font:italic 36px cursive!important;padding:12px!important;border:1px solid #c6d1d5!important;border-radius:8px!important}.field{display:block;margin:12px 0}.field input[type=text]{width:100%;max-width:360px;padding:11px;border:1px solid #b6c3ca;border-radius:7px;font-size:16px}button{border:0;border-radius:8px;padding:12px 15px;background:#087f73;color:white;font-weight:700;cursor:pointer;margin:5px 8px 5px 0}button.secondary{background:#34475c}button:disabled{opacity:.4;cursor:default}.error{color:#a12e2e;font-weight:700;white-space:pre-wrap}#approved{padding:16px;border:2px solid #087f73;border-radius:8px;margin-top:20px}#approved img{height:85px;max-width:300px;object-fit:contain}footer{border-top:1px solid #e2e7eb;margin-top:25px;padding-top:14px;color:#506275;font-size:13px}@media print{body{background:white}main{box-shadow:none;padding:0;margin:0;max-width:100%}.no-print{display:none!important}#approved{break-inside:avoid}}\n</style></head><body><main><div id=\"estimateView\"><header><div><img id=\"logo\" alt=\"\"><strong id=\"business\"></strong><br><small id=\"businessContact\"></small></div><div><h1 id=\"heading\"></h1><div id=\"reference\"></div><small id=\"dates\"></small></div></header>\n<h2 id=\"toTitle\"></h2><p id=\"client\"></p><div id=\"serviceDate\"></div><table><thead><tr><th id=\"descTitle\"></th><th id=\"qtyTitle\"></th><th id=\"rateTitle\"></th><th id=\"lineTitle\"></th></tr></thead><tbody id=\"services\"></tbody></table><div class=\"summary\" id=\"total\"></div><h2 id=\"termsTitle\"></h2><div class=\"terms\" id=\"terms\"></div><p class=\"notice\" id=\"invoiceClause\"></p></div>\n<section id=\"approvalForm\" class=\"no-print\"><h2 id=\"signTitle\"></h2><p id=\"signHelp\"></p><label class=\"field\"><span id=\"nameTitle\"></span><br><input id=\"signName\" type=\"text\" maxlength=\"80\" autocomplete=\"name\"></label><div class=\"field\"><span id=\"signatureTitle\"></span><div class=\"signature-choices\"><button type=\"button\" id=\"modeDraw\" class=\"active\"></button><button type=\"button\" id=\"modeType\"></button></div><canvas class=\"signature\" id=\"sig\" width=\"720\" height=\"125\"></canvas><input type=\"text\" class=\"typed-signature\" id=\"typedSig\" maxlength=\"80\" autocomplete=\"off\" hidden aria-label=\"Typed customer signature\" placeholder=\"Type your full name as your signature\"></div><button class=\"secondary\" type=\"button\" id=\"clear\"></button><p class=\"hint\" id=\"drawHelp\"></p><label class=\"field\"><input id=\"agree\" type=\"checkbox\"> <span id=\"agreeText\"></span></label><p class=\"error\" id=\"error\" role=\"alert\"></p><button type=\"button\" id=\"approve\"></button></section>\n<section id=\"done\" class=\"no-print\" hidden><p id=\"doneText\"></p><button type=\"button\" id=\"returnEmail\"></button><button class=\"secondary\" type=\"button\" id=\"print\"></button><p class=\"hint\" id=\"attachHelp\"></p></section>\n<footer id=\"footer\"></footer></main>\n<script id=\"estimateData\" type=\"application/json\">__DATA__<\/script>\n<script>\n(()=>{'use strict';\nconst d=JSON.parse(document.getElementById('estimateData').textContent), es=d.language==='es',both=d.language==='both';\nconst phrase=(en,spa)=>both?en+' / '+spa:es?spa:en;\nconst $=id=>document.getElementById(id);const addText=(parent,tag,value)=>{const n=document.createElement(tag);n.textContent=String(value??'');parent.appendChild(n);return n;};\nconst currency=(v)=>String(d.currencySymbol||'$')+Number(v||0).toLocaleString(es?'es-US':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2});\nconst entry=(id,value)=>$(id).textContent=value;\ndocument.documentElement.lang=both?'en':d.language;\ndocument.title=phrase('Estimate','Estimado')+' '+d.reference;\nentry('heading',phrase('ESTIMATE','ESTIMADO'));entry('reference',d.reference);\nentry('business',d.businessName);entry('businessContact',[d.businessAddress,d.businessPhone,d.businessEmail].filter(Boolean).join(' · '));\nif(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(d.logoData||'')) $('logo').src=d.logoData;else $('logo').hidden=true;\nentry('dates',phrase('Issued','Emitido')+': '+d.documentDate+' · '+phrase('Valid through','Válido hasta')+': '+d.validUntil);\nentry('toTitle',phrase('Prepared for','Preparado para'));entry('client',[d.customerName,d.customerEmail,d.serviceAddress].filter(Boolean).join(' · '));\nentry('serviceDate',phrase('Service date','Fecha del servicio')+': '+(d.serviceDate||phrase('To be scheduled','Por coordinar')));\nentry('descTitle',phrase('Service','Servicio'));entry('qtyTitle',phrase('Qty','Cant.'));entry('rateTitle',phrase('Rate','Precio'));entry('lineTitle',phrase('Amount','Importe'));\nd.items.forEach(item=>{const row=document.createElement('tr');[item.description,Number(item.qty).toLocaleString(),currency(item.rate),currency(item.qty*item.rate)].forEach(v=>addText(row,'td',v));$('services').appendChild(row)});\nentry('total',phrase('Approved estimate total','Total del estimado')+': '+currency(d.total));\nentry('termsTitle',phrase('Notes and terms','Notas y términos'));entry('terms',d.notes || phrase('No additional terms specified.','No se especificaron términos adicionales.'));\nentry('invoiceClause',phrase('If you approve and return this signed estimate, the business will issue an invoice for the approved work and total shown here. The invoice will show its due date and payment instructions. Signing this estimate does not charge you.','Si aprueba y devuelve este estimado firmado, el negocio emitirá una factura por el trabajo y el total aprobados aquí. La factura indicará su fecha de vencimiento e instrucciones de pago. Firmar el estimado no efectúa ningún cobro.'));\nentry('signTitle',phrase('Review and approve','Revise y apruebe'));entry('signHelp',phrase('Check every line, price and term before signing. You will download one signed estimate file to email back to the business.','Revise cada servicio, precio y término antes de firmar. Descargará un solo archivo de estimado firmado para devolverlo por correo al negocio.'));\nentry('nameTitle',phrase('Full name','Nombre completo'));entry('signatureTitle',phrase('Choose how to sign','Elija cómo firmar'));entry('modeDraw',phrase('Draw signature','Dibujar firma'));entry('modeType',phrase('Type signature','Escribir firma'));entry('typedSig', '');$('typedSig').placeholder=phrase('Type your full name as your signature','Escriba su nombre completo como firma');\nentry('clear',phrase('Clear signature','Borrar firma'));entry('drawHelp',phrase('Enter your full name, then draw your signature or type that same full name as your signature.','Escriba su nombre completo y luego dibuje su firma o escriba ese mismo nombre completo como firma.'));\nentry('agreeText',phrase('I reviewed the estimate and agree to the listed services, total and terms. I authorize an invoice for this approved estimate.','He revisado el estimado y acepto los servicios, el total y los términos indicados. Autorizo una factura por este estimado aprobado.'));\nentry('approve',phrase('Approve and download signed estimate','Aprobar y descargar el estimado firmado'));\nentry('doneText',phrase('Your signed estimate has been downloaded. Email that exact file to the business; the business must receive and verify it before issuing the invoice.','Se descargó el estimado firmado. Envíe ese archivo por correo al negocio; el negocio debe recibirlo y verificarlo antes de emitir la factura.'));\nentry('returnEmail',phrase('Open email to return signed estimate','Abrir correo para devolver el estimado firmado'));\n\nentry('attachHelp',phrase('IMPORTANT: The email is only a draft. Attach the downloaded SIGNED estimate file manually, then press Send. If your email service blocks HTML attachments, ask the business for another way to transfer the file.','IMPORTANTE: El correo es solo un borrador. Adjunte manualmente el archivo FIRMADO que descargó y pulse Enviar. Si su correo bloquea archivos HTML, solicite otra forma de transferirlo al negocio.'));\nentry('footer',phrase('This local file does not send email, charge cards or provide certified identity verification.','Este archivo local no envía correos, no cobra tarjetas ni verifica oficialmente la identidad.'));\nconst canvas=$('sig'), ctx=canvas.getContext('2d');ctx.strokeStyle='#172033';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';let drawing=false,strokes=0,signMode='draw';const pos=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}};\nconst setSignMode=mode=>{signMode=mode==='type'?'type':'draw';const typed=signMode==='type';canvas.hidden=typed;$('typedSig').hidden=!typed;$('modeDraw').classList.toggle('active',!typed);$('modeType').classList.toggle('active',typed);if(typed)$('typedSig').focus();};\n$('modeDraw').addEventListener('click',()=>setSignMode('draw'));$('modeType').addEventListener('click',()=>setSignMode('type'));\ncanvas.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;canvas.setPointerCapture(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});\ncanvas.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();strokes++});\n['pointerup','pointercancel','pointerleave'].forEach(event=>canvas.addEventListener(event,()=>{drawing=false}));\n$('clear').addEventListener('click',()=>{ctx.clearRect(0,0,canvas.width,canvas.height);strokes=0;$('typedSig').value='';entry('error','')});\nconst htmlEscape=s=>String(s).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));\nconst safeJson=o=>JSON.stringify(o).replace(/</g,'\\\\u003c').replace(/>/g,'\\\\u003e').replace(/&/g,'\\\\u0026');\nconst download=(str,name)=>{const url=URL.createObjectURL(new Blob([str],{type:'text/html;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)};\n$('approve').addEventListener('click',()=>{\nconst name=$('signName').value.trim();const typedName=$('typedSig').value.trim().replace(/\\s+/g,' ');const isTyped=signMode==='type';if(name.length<2||!$('agree').checked||(isTyped?(typedName.length<2||typedName.toLocaleLowerCase()!==name.replace(/\\s+/g,' ').toLocaleLowerCase()):strokes<2)){entry('error',phrase('Enter your full name, '+(isTyped?'type the SAME full name as your signature':'draw your signature')+', and check the approval box.','Escriba su nombre completo, '+(isTyped?'escriba el MISMO nombre completo como firma':'dibuje su firma')+' y marque la casilla de aprobación.'));return;}\nentry('error','');const when=new Date().toISOString();let signature;if(isTyped){const typedCanvas=document.createElement('canvas');typedCanvas.width=720;typedCanvas.height=125;const tc=typedCanvas.getContext('2d');tc.fillStyle='#172033';let size=54;tc.font='italic '+size+'px cursive';while(tc.measureText(typedName).width>680&&size>18){size-=2;tc.font='italic '+size+'px cursive';}tc.fillText(typedName,14,82);signature=typedCanvas.toDataURL('image/png');}else{signature=canvas.toDataURL('image/png');}\nconst approval={product:'offline-estimate-signed',version:1,approvalKey:d.approvalKey,reference:d.reference,snapshot:d,signedName:name,signedAt:when,signatureData:signature,signatureMode:signMode,typedSignature:isTyped?typedName:'',accepted:true};\nconst frozen=$('estimateView').cloneNode(true);const approved=document.createElement('section');approved.id='approved';\naddText(approved,'h2',phrase('Customer approval','Aprobación del cliente'));addText(approved,'p',phrase('I have reviewed and approved the estimate.','He revisado y aprobado el estimado.'));\naddText(approved,'p',phrase('Signed by','Firmado por')+': '+name);addText(approved,'p',phrase('Signature method','Método de firma')+': '+(isTyped?phrase('Typed signature','Firma escrita'):phrase('Drawn signature','Firma dibujada')));const img=document.createElement('img');img.src=signature;img.alt=phrase('Customer signature','Firma del cliente');approved.appendChild(img);\naddText(approved,'p',phrase('Signed on','Firmado el')+': '+when);frozen.appendChild(approved);\nconst staticStyle=document.querySelector('style').textContent;\nconst signedHtml='<!doctype html><html lang=\"'+(both?'en':d.language)+'\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>'+htmlEscape(phrase('Signed estimate','Estimado firmado')+' '+d.reference)+'</title><style>'+staticStyle+'</style></head><body><main>'+frozen.outerHTML+'<footer>'+htmlEscape(phrase('Signed customer copy. The business must verify the returned file before issuing an invoice.','Copia firmada. El negocio debe verificar el archivo recibido antes de emitir la factura.'))+'</footer></main>'+\n'<scr'+'ipt id=\"signedEstimateApproval\" type=\"application/json\">'+safeJson(approval)+'</scr'+'ipt></body></html>';\nconst filename='SIGNED-ESTIMATE-'+d.reference.replace(/[^a-z0-9_-]/gi,'_')+'.html';download(signedHtml,filename);\n$('approvalForm').hidden=true;$('done').hidden=false;$('returnEmail').dataset.filename=filename;\n$('estimateView').replaceWith(frozen);$('done').scrollIntoView({block:'center'});\n});\n$('returnEmail').addEventListener('click',()=>{\nif(!d.businessEmail){entry('error',phrase('The business has not supplied a return email. Contact them directly and attach your signed file.','El negocio no suministró un correo de devolución. Comuníquese directamente y adjunte el archivo firmado.'));return;}\nconst filename=$('returnEmail').dataset.filename||'';\nconst subject=phrase('Signed estimate','Estimado firmado')+' '+d.reference;\nconst body=phrase('Hello, I reviewed and signed estimate ','Hola, revisé y firmé el estimado ')+d.reference+'\\n\\n'+phrase('Please find the signed estimate attached: ','Adjunto el estimado firmado: ')+filename+'\\n\\n'+phrase('IMPORTANT: Attach the downloaded signed file before sending.','IMPORTANTE: Adjunte el archivo firmado descargado antes de enviar.');\nwindow.location.href='mailto:'+encodeURIComponent(d.businessEmail)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);\n});\n\n})();\n<\/script></body></html>";
+      function approvalLabels() {
+        const lang = $("quoteLanguage").value || "en";
+        const es = lang === "es", both = lang === "both";
+        return (en, spanish) => both ? `${en} / ${spanish}` : es ? spanish : en;
+      }
+      function approvalPublicSnapshot(payload, total) {
+        const f = payload.fields || {}, s = payload.state || {};
+        const language = typeof EDITION_LANGUAGE !== "undefined" && (EDITION_LANGUAGE === "en" || EDITION_LANGUAGE === "es") ? EDITION_LANGUAGE : (f.quoteLanguage || "en");
+        const pickedDescription = item => language === "es" ? (item.descriptionEs || item.descriptionEn || "") : (item.descriptionEn || item.descriptionEs || "");
+        const pickedNotes = language === "es" ? [f.notesEs, f.termsEs] : language === "both" ? [f.notesEn, f.termsEn, f.notesEs, f.termsEs] : [f.notesEn, f.termsEn];
+        const validDays = Math.max(1, Math.round(Number(f.validDays) || 14));
+        const date = f.documentDate || "";
+        const validUntil = date && /^\d{4}-\d\d-\d\d$/.test(date) ? addDays(date, validDays) : "";
+        const items = (s.items || []).filter(i => (i.descriptionEn || i.descriptionEs) && (positive(i.qty) || positive(i.rate))).map(i => ({description:pickedDescription(i), qty:positive(i.qty), rate:positive(i.rate)}));
+        return {
+          approvalKey: String(s.approvalKey || ""), reference:String(s.quoteNumber || ""),
+          language, businessName:String(f.businessName || ""),businessEmail:String(f.businessEmail || ""),
+          businessPhone:String(f.businessPhone || ""),businessAddress:String(f.businessAddress || ""),
+          customerName:String(f.customerName || ""),customerEmail:String(f.customerEmail || ""),
+          serviceAddress:String(f.serviceAddress || ""),serviceDate:String(f.serviceDate || ""),
+          documentDate:date,validUntil,
+          notes:pickedNotes.filter(Boolean).join("\n\n"),
