@@ -1,0 +1,300 @@
+
+      function translateUI(key, language = state.uiLanguage || "en") {
+        return (i18n[language] && i18n[language][key]) || (i18n.en && i18n.en[key]) || "";
+      }
+
+      function syncContactSectionLanguage() {
+        ["contactTitle","contactHelp","contactLog","contactQueue","contactDisclaimer"].forEach((key) => {
+          const value = translateUI(key);
+          document.querySelectorAll(`[data-i18n="${key}"]`).forEach((node) => {
+            node.textContent = value;
+          });
+        });
+      }
+
+      function applyLanguage(language) {
+        language=EDITION_LANGUAGE;
+        $("quoteLanguage").value=EDITION_LANGUAGE;
+        state.uiLanguage = language;
+        document.documentElement.lang = language;
+        $("uiEnglish").classList.toggle("active", language === "en");
+        $("uiSpanish").classList.toggle("active", language === "es");
+        document.querySelectorAll("[data-i18n]").forEach((node) => {
+          const key = node.dataset.i18n;
+          const value = translateUI(key, language);
+          if (value) node.textContent = value;
+        });
+        syncContactSectionLanguage();
+        applyContactLocalization(language);
+        renderSignatureMode();
+        renderItems();
+        calculateAndRender();
+        renderHistory();
+        persist();
+      }
+
+      function addItem(descriptionEn = "", descriptionEs = "", qty = 1, rate = 0) {
+        state.items.push({
+          id: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
+          descriptionEn,
+          descriptionEs,
+          qty,
+          rate
+        });
+        renderItems();
+        calculateAndRender();
+      }
+
+      function renderItems() {
+        const body = $("itemsBody");
+        body.innerHTML = "";
+        state.items.forEach((item, index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input data-item-index="${index}" data-field="descriptionEn" value="${escapeHtml(item.descriptionEn)}" aria-label="English description"></td>
+            <td><input data-item-index="${index}" data-field="descriptionEs" value="${escapeHtml(item.descriptionEs)}" aria-label="Spanish description"></td>
+            <td><input class="num" type="number" min="0" step="0.01" data-item-index="${index}" data-field="qty" value="${positive(item.qty)}" aria-label="Quantity"></td>
+            <td><input class="num" type="number" min="0" step="0.01" data-item-index="${index}" data-field="rate" value="${positive(item.rate)}" aria-label="Rate"></td>
+            <td class="row-total">${currency(positive(item.qty) * positive(item.rate))}</td>
+            <td><button class="icon-btn" type="button" data-remove-index="${index}" aria-label="Remove">×</button></td>
+          `;
+          body.appendChild(row);
+        });
+
+        body.querySelectorAll("input[data-item-index]").forEach((input) => {
+          input.addEventListener("input", (event) => {
+            const index = Number(event.target.dataset.itemIndex);
+            const field = event.target.dataset.field;
+            state.items[index][field] = ["qty","rate"].includes(field) ? positive(event.target.value) : event.target.value;
+            const row = event.target.closest("tr");
+            row.querySelector(".row-total").textContent = currency(positive(state.items[index].qty) * positive(state.items[index].rate));
+            calculateAndRender();
+            persist();
+          });
+        });
+
+        body.querySelectorAll("[data-remove-index]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.items.splice(Number(button.dataset.removeIndex), 1);
+            if (!state.items.length) addItem();
+            renderItems();
+            calculateAndRender();
+            persist();
+          });
+        });
+      }
+
+      function calculations() {
+        const subtotal = state.items.reduce((sum, item) => sum + positive(item.qty) * positive(item.rate), 0);
+        const discount = Math.min(positive($("discount").value), subtotal);
+        const serviceRevenue = Math.max(0, subtotal - discount);
+        const taxRate = positive($("taxRate").value) / 100;
+        const tax = serviceRevenue * taxRate;
+        const total = serviceRevenue + tax;
+        const deposit = Math.min(positive($("deposit").value), total);
+        const balance = Math.max(0, total - deposit);
+
+        const workerCount = positive($("workers").value);
+        const hoursEach = positive($("hoursEach").value);
+        const totalLaborHours = workerCount * hoursEach;
+        const laborCost = totalLaborHours * positive($("laborRate").value);
+        const travelCost = positive($("miles").value) * positive($("mileCost").value);
+        const materials = positive($("materialsCost").value);
+        const other = positive($("otherCost").value);
+        const overhead = positive($("overheadCost").value);
+        const directCosts = laborCost + travelCost + materials + other + overhead;
+
+        const processingRate = positive($("processingRate").value) / 100;
+        const paymentFee = total * processingRate;
+        const totalCosts = directCosts + paymentFee;
+        const profit = serviceRevenue - totalCosts;
+        const margin = serviceRevenue > 0 ? (profit / serviceRevenue) * 100 : 0;
+        const effectiveHour = totalLaborHours > 0 ? profit / totalLaborHours : 0;
+        const targetMargin = Math.min(90, positive($("targetMargin").value)) / 100;
+        const denominator = Math.max(.05, 1 - targetMargin - processingRate * (1 + taxRate));
+        const recommended = directCosts > 0 ? directCosts / denominator : 0;
+        const increaseNeeded = Math.max(0, recommended - serviceRevenue);
+
+        return {
+          subtotal, discount, serviceRevenue, tax, total, deposit, balance,
+          totalLaborHours, laborCost, travelCost, directCosts, paymentFee,
+          totalCosts, profit, margin, effectiveHour, targetMargin: targetMargin * 100,
+          recommended, increaseNeeded
+        };
+      }
+
+      function setPreviewLabels(language) {
+        const type = documentType();
+        const t = type === "invoice" ? invoiceText[language] : quoteText[language];
+        $("previewTitle").textContent = t.title;
+        $("previewQuoteLabel").textContent = t.quoteNumber;
+        $("previewDateLabel").textContent = t.date;
+        $("previewValidLabel").textContent = t.valid;
+        $("previewPreparedForLabel").textContent = t.prepared;
+        $("previewJobLabel").textContent = t.job;
+        $("previewServiceDateLabel").textContent = t.serviceDate;
+        $("previewEstimateOnly").textContent = type === "estimate"
+          ? t.estimateOnly + " " + (language === "es" ? "Al firmar y devolver este estimado, se emitirá una factura con el total aprobado y la fecha de vencimiento correspondiente." : language === "both" ? "After you sign and return this estimate, an invoice will be issued for the approved total and show its due date. / Después de firmar y devolver este estimado, se emitirá una factura con el total aprobado y la fecha de vencimiento." : "After you sign and return this estimate, an invoice will be issued for the approved total and show its due date.")
+          : state.approvalRecord ? t.estimateOnly + " " + (language === "es" ? `Factura emitida tras la aprobación firmada del estimado ${state.approvalRecord.reference} por ${state.approvalRecord.signedName} el ${state.approvalRecord.signedAt.slice(0,10)}.` : language === "both" ? `Issued after signed approval of estimate ${state.approvalRecord.reference} by ${state.approvalRecord.signedName} on ${state.approvalRecord.signedAt.slice(0,10)}. / Emitida tras la aprobación firmada del estimado.` : `Issued after signed approval of estimate ${state.approvalRecord.reference} by ${state.approvalRecord.signedName} on ${state.approvalRecord.signedAt.slice(0,10)}.`) : t.estimateOnly;
+        $("previewDescriptionLabel").textContent = t.description;
+        $("previewQtyLabel").textContent = t.qty;
+        $("previewRateLabel").textContent = t.rate;
+        $("previewAmountLabel").textContent = t.amount;
+        $("previewNotesLabel").textContent = t.notes;
+        $("previewSubtotalLabel").textContent = t.subtotal;
+        $("previewDiscountLabel").textContent = t.discount;
+        $("previewTaxLabel").textContent = t.tax;
+        $("previewTotalLabel").textContent = t.total;
+        $("previewDepositLabel").textContent = t.deposit;
+        $("previewBalanceLabel").textContent = t.balance;
+        $("previewSignatureLabel").textContent = t.approval;
+        $("previewSignatureDateLabel").textContent = t.signatureDate;
+        $("previewFooter").textContent = t.footer;
+        $("previewStatusLabel").textContent = type === "invoice" ? t.status : "";
+      }
+
+      function previewDescription(item, language) {
+        if (language === "en") return `<span>${escapeHtml(item.descriptionEn || "Service")}</span>`;
+        if (language === "es") return `<span>${escapeHtml(item.descriptionEs || item.descriptionEn || "Servicio")}</span>`;
+        const primary = item.descriptionEn || item.descriptionEs || "Service";
+        const secondary = item.descriptionEs || item.descriptionEn || "";
+        return `<span>${escapeHtml(primary)}</span>${secondary && secondary !== primary ? `<span class="item-secondary">${escapeHtml(secondary)}</span>` : ""}`;
+      }
+
+      function notesForLanguage(language) {
+        const noteEn = $("notesEn").value.trim();
+        const noteEs = $("notesEs").value.trim();
+        const termsEn = $("termsEn").value.trim();
+        const termsEs = $("termsEs").value.trim();
+        if (language === "en") return [noteEn, termsEn].filter(Boolean).join("\n\n");
+        if (language === "es") return [noteEs, termsEs].filter(Boolean).join("\n\n");
+        return [
+          noteEn && `EN: ${noteEn}`,
+          termsEn && `EN: ${termsEn}`,
+          noteEs && `ES: ${noteEs}`,
+          termsEs && `ES: ${termsEs}`
+        ].filter(Boolean).join("\n\n");
+      }
+
+      function calculateAndRender() {
+        const calc = calculations();
+        const language = $("quoteLanguage").value || "en";
+        const type = documentType();
+        const t = type === "invoice" ? invoiceText[language] : quoteText[language];
+        if (!state.quoteNumber) state.quoteNumber = makeQuoteNumber();
+
+        $("subtotalValue").textContent = currency(calc.subtotal);
+        $("discountValue").textContent = currency(-calc.discount);
+        $("taxValue").textContent = currency(calc.tax);
+        $("grandTotalValue").textContent = currency(calc.total);
+
+        $("profitValue").textContent = currency(calc.profit);
+        $("marginValue").textContent = `${calc.margin.toFixed(1)}%`;
+        $("jobCostsValue").textContent = currency(calc.totalCosts);
+        $("effectiveHourValue").textContent = currency(calc.effectiveHour);
+        $("recommendedValue").textContent = currency(calc.recommended);
+        $("profitMetric").classList.toggle("negative", calc.profit < 0);
+
+        const pill = $("healthPill");
+        pill.className = "health-pill";
+        if (calc.serviceRevenue <= 0) {
+          pill.textContent = i18n[state.uiLanguage].waiting;
+          $("recommendationText").textContent = i18n[state.uiLanguage].addCosts;
+        } else if (calc.profit < 0) {
+          pill.textContent = i18n[state.uiLanguage].loss;
+          pill.classList.add("bad");
+          $("recommendationText").textContent = i18n[state.uiLanguage].priceLoss;
+        } else if (calc.margin + .01 < calc.targetMargin) {
+          pill.textContent = i18n[state.uiLanguage].low;
+          $("recommendationText").innerHTML = `${escapeHtml(i18n[state.uiLanguage].priceLow)} <strong>${currency(calc.increaseNeeded)}</strong>.`;
+        } else {
+          pill.textContent = i18n[state.uiLanguage].healthy;
+          pill.classList.add("good");
+          $("recommendationText").textContent = i18n[state.uiLanguage].priceOnTarget;
+        }
+
+        document.documentElement.style.setProperty("--accent", $("accentColor").value || "#087f73");
+        document.documentElement.style.setProperty("--accent-dark", darkenHex($("accentColor").value || "#087f73", 18));
+        document.documentElement.style.setProperty("--accent-soft", `${$("accentColor").value || "#087f73"}18`);
+
+        setPreviewLabels(language);
+        $("previewBusinessName").textContent = $("businessName").value.trim() || (state.uiLanguage === "es" ? "Nombre de tu negocio" : "Your Business Name");
+        $("previewBusinessAddress").textContent = $("businessAddress").value.trim() || (state.uiLanguage === "es" ? "Ciudad, Estado" : "City, State");
+        $("previewBusinessPhone").textContent = $("businessPhone").value.trim();
+        $("previewBusinessEmail").textContent = $("businessEmail").value.trim();
+        $("previewBusinessSeparator").textContent = $("businessPhone").value.trim() && $("businessEmail").value.trim() ? "  •  " : "";
+        $("previewCustomerName").textContent = $("customerName").value.trim() || (language === "es" ? "Nombre del cliente" : language === "both" ? "Customer / Cliente" : "Customer Name");
+        $("previewCustomerPhone").textContent = $("customerPhone").value.trim();
+        $("previewCustomerEmail").textContent = $("customerEmail").value.trim();
+        $("previewServiceAddress").textContent = $("serviceAddress").value.trim() || (language === "es" ? "Dirección del servicio" : language === "both" ? "Service address / Dirección" : "Service address");
+        $("previewQuoteNumber").textContent = state.quoteNumber;
+        if (!$("documentDate").value) $("documentDate").value = isoToday();
+        if (type === "invoice" && !$("dueDate").value) $("dueDate").value = addDays($("documentDate").value || isoToday(), 14);
+        $("previewCreatedDate").textContent = formatDate($("documentDate").value || isoToday());
+        $("previewValidDate").textContent = type === "invoice"
+          ? formatDate($("dueDate").value || addDays($("documentDate").value || isoToday(), 14))
+          : formatDate(addDays($("documentDate").value || isoToday(), positive($("validDays").value)));
+        $("dueDateField").classList.toggle("hidden", type !== "invoice");
+        $("invoiceStatusField").classList.toggle("hidden", type !== "invoice");
+        $("amountPaidField").classList.toggle("hidden", type !== "invoice");
+        $("newPaymentAmountField").classList.toggle("hidden", type !== "invoice");
+        $("recordPaymentAction").classList.toggle("hidden", type !== "invoice");
+        $("previewStatusRow").classList.toggle("hidden", type !== "invoice");
+        if (type === "invoice") {
+          const status = $("invoiceStatus").value || "unpaid";
+          const labels = language === "es"
+            ? {unpaid:"Sin pagar", partial:"Pago parcial", paid:"Pagada"}
+            : language === "both"
+              ? {unpaid:"Unpaid / Sin pagar", partial:"Partially paid / Pago parcial", paid:"Paid / Pagada"}
+              : {unpaid:"Unpaid", partial:"Partially paid", paid:"Paid"};
+          $("previewStatusValue").textContent = labels[status] || labels.unpaid;
+          $("previewStatusValue").className = `document-status ${status}`;
+        }
+        $("sendDocumentButtonText").textContent = type === "invoice"
+          ? "Prepare invoice + email"
+          : "Prepare signable estimate + email";
+        $("saveInvoicePdfButton").classList.toggle("hidden", type !== "invoice");
+        $("printButton").classList.toggle("hidden", type !== "invoice");
+        $("printPreviewButton").classList.toggle("hidden", type !== "invoice");
+        $("customerPreviewHelp").textContent = type === "invoice"
+          ? "Save or print this customer invoice as a PDF."
+          : "Estimate preview. Use the signable HTML workflow for customer approval.";
+        $("convertInvoiceButton").disabled = type === "invoice";
+        const invoiceBalanceForActions = type === "invoice" ? Math.max(0, calc.total - Math.min(positive($("amountPaid").value), calc.total)) : 0;
+        $("recordPaymentButton").disabled = type !== "invoice" || invoiceBalanceForActions <= 0.004;
+        $("paymentReceiptButton").disabled = type !== "invoice" || positive(state.lastPaymentAmount) <= 0;
+        $("previewServiceDate").textContent = $("serviceDate").value ? formatDate($("serviceDate").value) : t.toSchedule;
+        $("previewSignedDate").textContent = state.signedDate ? formatDate(state.signedDate) : "";
+        $("previewNotesTerms").textContent = notesForLanguage(language);
+
+        const logo = $("quoteLogo");
+        if (state.logoData) {
+          logo.src = state.logoData;
+          logo.style.display = "block";
+        } else {
+          logo.removeAttribute("src");
+          logo.style.display = "none";
+        }
+        $("removeLogoButton").classList.toggle("hidden", !state.logoData);
+
+        const previewItems = $("previewItems");
+        previewItems.innerHTML = "";
+        const visibleItems = state.items.filter(item => (item.descriptionEn || item.descriptionEs) && (positive(item.qty) || positive(item.rate)));
+        if (!visibleItems.length) {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${language === "es" ? "Servicio" : language === "both" ? "Service / Servicio" : "Service"}</td><td>1</td><td>${currency(0)}</td><td>${currency(0)}</td>`;
+          previewItems.appendChild(row);
+        } else {
+          visibleItems.forEach((item) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${previewDescription(item, language)}</td>
+              <td>${positive(item.qty).toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+              <td>${currency(positive(item.rate))}</td>
+              <td><strong>${currency(positive(item.qty) * positive(item.rate))}</strong></td>
+            `;
+            previewItems.appendChild(row);
+          });
+        }
+
+        $("previewSubtotal").textContent = currency(calc.subtotal);
