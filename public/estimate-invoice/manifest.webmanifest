@@ -1,0 +1,19 @@
+{
+  "name": "Estimate, Invoice & Client Manager",
+  "short_name": "Estimate Manager",
+  "description": "Create estimates, invoices, customer records, payment links and signable approvals from phone, tablet or computer.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef2f6",
+  "theme_color": "#087f73",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
