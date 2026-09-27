@@ -1,0 +1,300 @@
+						}
+					}
+				}
+								
+				row += inc;
+	
+				if (row < 0 || this.moduleCount <= row) {
+					row -= inc;
+					inc = -inc;
+					break;
+				}
+			}
+		}
+		
+	}
+
+};
+
+QRCode.PAD0 = 0xEC;
+QRCode.PAD1 = 0x11;
+
+QRCode.createData = function(typeNumber, errorCorrectLevel, dataList) {
+	
+	var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
+	
+	var buffer = new QRBitBuffer();
+	
+	for (var i = 0; i < dataList.length; i++) {
+		var data = dataList[i];
+		buffer.put(data.mode, 4);
+		buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+		data.write(buffer);
+	}
+
+	// calc num max data.
+	var totalDataCount = 0;
+	for (var x = 0; x < rsBlocks.length; x++) {
+		totalDataCount += rsBlocks[x].dataCount;
+	}
+
+	if (buffer.getLengthInBits() > totalDataCount * 8) {
+		throw new Error("code length overflow. (" + 
+            buffer.getLengthInBits() + 
+            ">" +  
+            totalDataCount * 8 + 
+            ")");
+	}
+
+	// end code
+	if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+		buffer.put(0, 4);
+	}
+
+	// padding
+	while (buffer.getLengthInBits() % 8 !== 0) {
+		buffer.putBit(false);
+	}
+
+	// padding
+	while (true) {
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD0, 8);
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD1, 8);
+	}
+
+	return QRCode.createBytes(buffer, rsBlocks);
+};
+
+QRCode.createBytes = function(buffer, rsBlocks) {
+
+	var offset = 0;
+	
+	var maxDcCount = 0;
+	var maxEcCount = 0;
+	
+	var dcdata = new Array(rsBlocks.length);
+	var ecdata = new Array(rsBlocks.length);
+	
+	for (var r = 0; r < rsBlocks.length; r++) {
+
+		var dcCount = rsBlocks[r].dataCount;
+		var ecCount = rsBlocks[r].totalCount - dcCount;
+
+		maxDcCount = Math.max(maxDcCount, dcCount);
+		maxEcCount = Math.max(maxEcCount, ecCount);
+		
+		dcdata[r] = new Array(dcCount);
+		
+		for (var i = 0; i < dcdata[r].length; i++) {
+			dcdata[r][i] = 0xff & buffer.buffer[i + offset];
+		}
+		offset += dcCount;
+		
+		var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+		var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+		var modPoly = rawPoly.mod(rsPoly);
+		ecdata[r] = new Array(rsPoly.getLength() - 1);
+		for (var x = 0; x < ecdata[r].length; x++) {
+            var modIndex = x + modPoly.getLength() - ecdata[r].length;
+			ecdata[r][x] = (modIndex >= 0)? modPoly.get(modIndex) : 0;
+		}
+
+	}
+	
+	var totalCodeCount = 0;
+	for (var y = 0; y < rsBlocks.length; y++) {
+		totalCodeCount += rsBlocks[y].totalCount;
+	}
+
+	var data = new Array(totalCodeCount);
+	var index = 0;
+
+	for (var z = 0; z < maxDcCount; z++) {
+		for (var s = 0; s < rsBlocks.length; s++) {
+			if (z < dcdata[s].length) {
+				data[index++] = dcdata[s][z];
+			}
+		}
+	}
+
+	for (var xx = 0; xx < maxEcCount; xx++) {
+		for (var t = 0; t < rsBlocks.length; t++) {
+			if (xx < ecdata[t].length) {
+				data[index++] = ecdata[t][xx];
+			}
+		}
+	}
+
+	return data;
+
+};
+
+module.exports = QRCode;
+
+};
+
+  function load(id){
+    id=String(id).replace(/^\.\//,'').replace(/\.js$/,'');
+    if(cache[id]) return cache[id].exports;
+    if(!modules[id]) throw new Error('QR module not found: '+id);
+    const module={exports:{}}; cache[id]=module;
+    modules[id](module,module.exports,function(req){return load(req)});
+    return module.exports;
+  }
+  global.QRCore={QRCode:load('index'),ErrorLevel:load('QRErrorCorrectLevel')};
+})(window);
+</script>
+<script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "english_only_layout_review_20260923_v1";
+      const HISTORY_KEY = "english_only_layout_review_history_20260923_v1";
+
+      const EDITION_LANGUAGE = "en";
+      const i18n = {
+        en: {
+          appTitle: "Bilingual Service Quote & Profit Builder",
+          appSubtitle: "Price the work. Protect the profit. Present it professionally.",
+          quickHelp: "Quick help",
+          printPdf: "Print / Save PDF",
+          saveQuote: "Save quote",
+          newQuote: "New quote",
+          backup: "Export backup",
+          restore: "Import backup",
+          businessCustomer: "Business & customer",
+          businessCustomerHelp: "Customize your brand once; it stays saved on this device.",
+          settings: "Settings",
+          yourBusiness: "Your business",
+          businessName: "Business name",
+          phone: "Phone",
+          email: "Email",
+          businessAddress: "Business address",
+          logo: "Logo (optional)",
+          logoHelp: "PNG or JPG. A small file works best.",
+          removeLogo: "Remove logo",
+          logoRemoved: "Logo removed.",
+          customerJob: "Customer & job",
+          customerName: "Customer name",
+          customerPhone: "Customer phone",
+          customerEmail: "Customer email",
+          serviceDate: "Service date",
+          serviceAddress: "Service address",
+          quoteLanguage: "Customer quote language",
+          stripeTitle: "Stripe payment link",
+          stripePaymentLink: "Stripe invoice or payment link (optional)",
+          includePaymentLink: "Show the payment button on the estimate and include it in the email.",
+          stripeHelp: "Create the invoice or Payment Link in Stripe, then paste its secure URL here. This downloadable tool displays the link; it does not create Stripe invoices or store card information.",
+          stripeMissing: "No payment link has been added.",
+          stripeReady: "Secure payment link ready.",
+          stripeInvalid: "Enter a complete secure link beginning with https://.",
+          openPaymentPage: "Open payment page",
+          copyPaymentLink: "Copy payment link",
+          paymentLinkCopied: "Payment link copied.",
+          sendEstimate: "Send estimate",
+          paymentQr: "Payment QR",
+          sendEstimateTitle: "Send the estimate",
+          sendEstimateHelp: "Use Gmail for the formatted email with the clickable Stripe payment button.",
+          copyRichOpenGmail: "2. Open Gmail with email text",
+          copyRichEmail: "Copy formatted email",
+          openGmailPlain: "Open Gmail with plain text",
+          openEmailApp: "Open email app",
+          copyEmailText: "2. Copy email message",
+          richEmailInstruction: "After Gmail opens, click inside the empty message area and paste with Ctrl+V or Command+V. Browsers do not allow a downloaded file to paste into Gmail automatically.",
+          paymentQrTitle: "Stripe payment QR",
+          paymentQrHelp: "The customer scans the code to open the secure Stripe-hosted payment page.",
+          paymentQrPrivacy: "Payment happens directly on Stripe. This tool never receives or stores card information.",
+          noCustomerEmail: "Add the customer email before opening an email app.",
+          noPaymentLink: "Add a secure Stripe payment link first.",
+          formattedCopied: "Formatted email copied. Paste it into Gmail.",
+          emailTextCopied: "Email text copied.",
+          servicesPricing: "Services & customer price",
+          servicesPricingHelp: "Add the services or products you want to include for this customer.",
+          descriptionEnglish: "Description (English)",
+          descriptionSpanish: "Description (Español)",
+          quantity: "Qty",
+          rate: "Rate",
+          amount: "Amount",
+          addService: "Add service",
+          discount: "Discount",
+          taxRate: "Sales tax %",
+          taxHelp: "Use only when tax applies to this service.",
+          deposit: "Deposit requested",
+          validDays: "Quote valid (days)",
+          subtotal: "Subtotal",
+          tax: "Tax",
+          quoteTotal: "Quote total",
+          realJobCosts: "Your real job costs",
+          realJobCostsHelp: "These numbers are private and never appear on the customer quote.",
+          workers: "Workers",
+          hoursEach: "Hours each",
+          laborCostHour: "Labor cost / hour",
+          laborHelp: "Include your own pay if you perform the work.",
+          materials: "Materials & supplies",
+          roundTripMiles: "Round-trip miles",
+          vehicleCostMile: "Vehicle cost / mile",
+          vehicleHelp: "Your operating-cost estimate—not a tax deduction rate.",
+          otherCosts: "Other job costs",
+          overhead: "Overhead allocation",
+          processingFee: "Payment processing %",
+          targetMargin: "Target profit margin %",
+          internalNotes: "Private notes",
+          customerNotesTerms: "Customer notes & terms",
+          customerNotesTermsHelp: "Add customer-facing scope, exclusions, scheduling details, and approval terms. These appear on the estimate, signed copy, and invoice.",
+          notesEnglish: "Notes (English)",
+          notesSpanish: "Notas (Español)",
+          termsEnglish: "Terms (English)",
+          termsSpanish: "Términos (Español)",
+          privacyText: "Your data stays in this browser. Avoid entering Social Security numbers, card numbers, or other highly sensitive information.",
+          profitCheck: "Private profit check",
+          profitCheckHelp: "What remains after estimated job costs and card fees.",
+          estimatedProfit: "Estimated profit",
+          profitMargin: "Profit margin",
+          totalJobCosts: "Total job costs",
+          effectiveHour: "Profit / labor hour",
+          recommendedMinimum: "Target-margin price",
+          customerPreview: "Customer quote preview",
+          customerPreviewHelp: "Only this page prints or saves as PDF.",
+          savedQuotes: "Saved quotes",
+          savedQuotesHelp: "Stored only in this browser until you export a backup.",
+          helpTitle: "Create a profitable estimate or invoice in five steps",
+          helpSubtitle: "No spreadsheet, account, or internet connection needed.",
+          help1Title: "Add your business and customer",
+          help1Text: "Your business details stay saved for the next document.",
+          help2Title: "Add your services",
+          help2Text: "Add only the services or products you actually offer and set the customer price.",
+          help3Title: "Enter the customer price",
+          help3Text: "Set quantities and rates for each line item.",
+          help4Title: "Enter your private costs",
+          help4Text: "Labor, travel, supplies, fees, and overhead never appear on the customer document.",
+          help5Title: "Print, save, and back up",
+          help5Text: "Print to paper or choose “Save as PDF.” Export a backup occasionally.",
+          settingsHelp: "Adjust the document style and numbering.",
+          accentColor: "Document accent color",
+          currencySymbol: "Currency symbol",
+          quotePrefix: "Document number prefix",
+          nextNumber: "Next document number",
+          saveSettings: "Save settings",
+          waiting: "Waiting for price",
+          healthy: "On target",
+          low: "Below target",
+          loss: "Losing money",
+          addCosts: "Add services and job costs to check the price.",
+          priceOnTarget: "The current price meets or exceeds your target margin.",
+          priceLow: "To reach the target margin, increase service revenue by about",
+          priceLoss: "This job is currently priced below its estimated costs.",
+          noQuotes: "No saved quotes yet.",
+          quoteSaved: "Quote saved.",
+          settingsSaved: "Settings saved.",
+          backupSaved: "Backup downloaded.",
+          backupRestored: "Backup imported.",
+          invalidBackup: "That file is not a valid backup.",
