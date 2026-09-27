@@ -1,0 +1,300 @@
+<div class="help-step"><h3 data-i18n="help5Title">Print, send, and collect payment</h3><p data-i18n="help5Text">Print or save as PDF, send a formatted email, and include any payment methods you use. Export a backup occasionally.</p></div>
+</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="settingsTitle" aria-modal="true" class="modal-backdrop" id="settingsModal" role="dialog">
+<div class="modal">
+<header>
+<div>
+<h2 data-i18n="settings" id="settingsTitle">Settings</h2>
+<p data-i18n="settingsHelp">Adjust the document style and numbering.</p>
+</div>
+<button aria-label="Close" class="close-btn" data-close-modal="settingsModal" type="button">×</button>
+</header>
+<div class="modal-body">
+<div class="grid">
+<label class="span-6"><span data-i18n="accentColor">Document accent color</span>
+<input id="accentColor" type="color" value="#087f73"/>
+</label>
+<label class="span-6"><span data-i18n="currencySymbol">Currency symbol</span>
+<input id="currencySymbol" maxlength="4" value="$"/>
+</label>
+<label class="span-6"><span data-i18n="quotePrefix">Document number prefix</span>
+<input id="quotePrefix" maxlength="8" value="Q"/>
+</label>
+<label class="span-6"><span data-i18n="nextNumber">Next document number</span>
+<input id="nextQuoteNumber" min="1" step="1" type="number" value="1001"/>
+</label>
+</div>
+<button class="btn btn-primary" id="saveSettingsButton" style="margin-top:16px" type="button"><span data-i18n="saveSettings">Save settings</span></button>
+</div>
+</div>
+</div>
+<div aria-labelledby="sendEstimateTitle" aria-modal="true" class="modal-backdrop" id="sendEstimateModal" role="dialog">
+<div class="modal modal-wide">
+<header>
+<div>
+<h2 id="sendEstimateTitle">Send the estimate</h2>
+<p id="sendEstimateHelp">Save the document, then email it yourself with the file attached.</p>
+</div>
+<button aria-label="Close" class="close-btn" data-close-modal="sendEstimateModal" type="button">×</button>
+</header>
+<div class="modal-body">
+<div class="send-contact"><strong id="sendCustomerName">Customer</strong><small id="sendCustomerEmail">No email saved</small></div>
+<div aria-label="Attach the customer document before sending" id="attachmentSteps" role="group" style="padding:16px;border:2px solid #087f73;background:#edf9f6;border-radius:12px;margin:14px 0;line-height:1.55">
+<strong id="attachmentStepsTitle" style="display:block;font-size:15px;margin-bottom:6px">Step 1: Prepare a customer document</strong>
+<p id="attachmentStepDescription" style="margin:0 0 12px">Download the signable HTML estimate before composing your email.</p>
+<button class="btn btn-primary" id="prepareAttachmentButton" type="button">1. Download signable HTML estimate</button>
+<p aria-live="polite" id="attachmentFileName" style="margin:8px 0 0;font-size:12px">The document will be saved to your device. You must attach it in your own email app.</p>
+<p id="attachmentBlockNote" style="margin:8px 0 0;font-size:12px">The customer opens the HTML estimate in a browser, types or draws a signature, approves it, and emails the downloaded SIGNED-ESTIMATE HTML file back.</p>
+</div>
+<div class="rich-preview" id="richEmailPreview"></div>
+<div class="send-actions">
+<button class="btn btn-secondary" data-i18n="copyRichEmail" id="copyRichEmailButton" type="button">Copy formatted email</button>
+<button class="btn btn-primary" data-i18n="copyEmailText" id="copyEmailTextButton" type="button">2. Copy email message</button>
+</div>
+<div class="send-instruction" id="richEmailInstruction">Step 2: Copy the email message. Step 3: Open your email, paste the message, attach the downloaded signable HTML estimate, confirm the attachment appears, and press Send.</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="paymentQrTitle" aria-modal="true" class="modal-backdrop" id="paymentQrModal" role="dialog">
+<div class="modal modal-wide">
+<header>
+<div>
+<h2 data-i18n="paymentQrTitle" id="paymentQrTitle">Payment QR</h2>
+<p data-i18n="paymentQrHelp" id="paymentQrHelp">The customer scans the code to open your selected payment link.</p>
+</div>
+<button aria-label="Close" class="close-btn" data-close-modal="paymentQrModal" type="button">×</button>
+</header>
+<div class="modal-body payment-qr-grid">
+<div class="payment-qr-wrap" id="paymentQrWrap"><canvas height="240" id="paymentQrCanvas" width="240"></canvas></div>
+<div>
+<h3 id="paymentQrCustomer" style="margin-top:0"></h3>
+<p data-i18n="paymentQrPrivacy" id="paymentQrPrivacy">Payment happens through the payment service you selected. This tool never receives or stores card information.</p>
+<div class="payment-link-display" id="paymentQrUrl"></div>
+<div class="send-actions">
+<button class="btn btn-primary" data-i18n="openPaymentPage" id="paymentQrOpenButton" type="button">Open payment page</button>
+<button class="btn btn-secondary" data-i18n="copyPaymentLink" id="paymentQrCopyButton" type="button">Copy payment link</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+/* Embedded QR encoder derived from Kazuhiko Arase's QRCode for JavaScript (MIT License).
+   It runs locally in the browser; customer phone numbers and messages are not sent to a QR service. */
+(function(global){
+  const modules = Object.create(null), cache = Object.create(null);
+modules["QRMode"]=function(module,exports,require){
+module.exports = {
+    MODE_NUMBER :       1 << 0,
+    MODE_ALPHA_NUM :    1 << 1,
+    MODE_8BIT_BYTE :    1 << 2,
+    MODE_KANJI :        1 << 3
+};
+
+};
+modules["QRMath"]=function(module,exports,require){
+var QRMath = {
+
+	glog : function(n) {
+	
+		if (n < 1) {
+			throw new Error("glog(" + n + ")");
+		}
+		
+		return QRMath.LOG_TABLE[n];
+	},
+	
+	gexp : function(n) {
+	
+		while (n < 0) {
+			n += 255;
+		}
+	
+		while (n >= 256) {
+			n -= 255;
+		}
+	
+		return QRMath.EXP_TABLE[n];
+	},
+	
+	EXP_TABLE : new Array(256),
+	
+	LOG_TABLE : new Array(256)
+
+};
+	
+for (var i = 0; i < 8; i++) {
+	QRMath.EXP_TABLE[i] = 1 << i;
+}
+for (var i = 8; i < 256; i++) {
+	QRMath.EXP_TABLE[i] = QRMath.EXP_TABLE[i - 4]
+		^ QRMath.EXP_TABLE[i - 5]
+		^ QRMath.EXP_TABLE[i - 6]
+		^ QRMath.EXP_TABLE[i - 8];
+}
+for (var i = 0; i < 255; i++) {
+	QRMath.LOG_TABLE[QRMath.EXP_TABLE[i] ] = i;
+}
+
+module.exports = QRMath;
+
+};
+modules["QRMaskPattern"]=function(module,exports,require){
+module.exports = {
+	PATTERN000 : 0,
+	PATTERN001 : 1,
+	PATTERN010 : 2,
+	PATTERN011 : 3,
+	PATTERN100 : 4,
+	PATTERN101 : 5,
+	PATTERN110 : 6,
+	PATTERN111 : 7
+};
+
+};
+modules["QRErrorCorrectLevel"]=function(module,exports,require){
+module.exports = {
+	L : 1,
+	M : 0,
+	Q : 3,
+	H : 2
+};
+
+
+};
+modules["QR8bitByte"]=function(module,exports,require){
+var QRMode = require('./QRMode');
+
+function QR8bitByte(data) {
+	this.mode = QRMode.MODE_8BIT_BYTE;
+	this.data = data;
+}
+
+QR8bitByte.prototype = {
+
+	getLength : function() {
+		return this.data.length;
+	},
+	
+	write : function(buffer) {
+		for (var i = 0; i < this.data.length; i++) {
+			// not JIS ...
+			buffer.put(this.data.charCodeAt(i), 8);
+		}
+	}
+};
+
+module.exports = QR8bitByte;
+
+};
+modules["QRBitBuffer"]=function(module,exports,require){
+function QRBitBuffer() {
+	this.buffer = [];
+	this.length = 0;
+}
+
+QRBitBuffer.prototype = {
+
+	get : function(index) {
+		var bufIndex = Math.floor(index / 8);
+		return ( (this.buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+	},
+	
+	put : function(num, length) {
+		for (var i = 0; i < length; i++) {
+			this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+		}
+	},
+	
+	getLengthInBits : function() {
+		return this.length;
+	},
+	
+	putBit : function(bit) {
+	
+		var bufIndex = Math.floor(this.length / 8);
+		if (this.buffer.length <= bufIndex) {
+			this.buffer.push(0);
+		}
+	
+		if (bit) {
+			this.buffer[bufIndex] |= (0x80 >>> (this.length % 8) );
+		}
+	
+		this.length++;
+	}
+};
+
+module.exports = QRBitBuffer;
+
+};
+modules["QRPolynomial"]=function(module,exports,require){
+var QRMath = require('./QRMath');
+
+function QRPolynomial(num, shift) {
+	if (num.length === undefined) {
+		throw new Error(num.length + "/" + shift);
+	}
+
+	var offset = 0;
+
+	while (offset < num.length && num[offset] === 0) {
+		offset++;
+	}
+
+	this.num = new Array(num.length - offset + shift);
+	for (var i = 0; i < num.length - offset; i++) {
+		this.num[i] = num[i + offset];
+	}
+}
+
+QRPolynomial.prototype = {
+
+	get : function(index) {
+		return this.num[index];
+	},
+	
+	getLength : function() {
+		return this.num.length;
+	},
+	
+	multiply : function(e) {
+	
+		var num = new Array(this.getLength() + e.getLength() - 1);
+	
+		for (var i = 0; i < this.getLength(); i++) {
+			for (var j = 0; j < e.getLength(); j++) {
+				num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i) ) + QRMath.glog(e.get(j) ) );
+			}
+		}
+	
+		return new QRPolynomial(num, 0);
+	},
+	
+	mod : function(e) {
+	
+		if (this.getLength() - e.getLength() < 0) {
+			return this;
+		}
+	
+		var ratio = QRMath.glog(this.get(0) ) - QRMath.glog(e.get(0) );
+	
+		var num = new Array(this.getLength() );
+		
+		for (var i = 0; i < this.getLength(); i++) {
+			num[i] = this.get(i);
+		}
+		
+		for (var x = 0; x < e.getLength(); x++) {
+			num[x] ^= QRMath.gexp(QRMath.glog(e.get(x) ) + ratio);
+		}
+	
+		// recursive call
+		return new QRPolynomial(num, 0).mod(e);
+	}
+};
+
+module.exports = QRPolynomial;
