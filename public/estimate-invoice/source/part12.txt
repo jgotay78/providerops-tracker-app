@@ -1,0 +1,300 @@
+        en: {
+          title: "Estimate",
+          quoteNumber: "Quote #:",
+          date: "Date:",
+          valid: "Valid until:",
+          prepared: "Prepared for",
+          job: "Job details",
+          serviceDate: "Service date:",
+          estimateOnly: "This is an estimate, not an invoice.",
+          description: "Description",
+          qty: "Qty",
+          rate: "Rate",
+          amount: "Amount",
+          notes: "Notes & terms",
+          subtotal: "Subtotal",
+          discount: "Discount",
+          tax: "Tax",
+          total: "Total",
+          deposit: "Deposit requested",
+          balance: "Remaining balance",
+          approval: "Customer approval / signature",
+          signatureDate: "Date",
+          footer: "Thank you for the opportunity to earn your business.",
+          toSchedule: "To be scheduled"
+        },
+        es: {
+          title: "Estimado",
+          quoteNumber: "Cotización #:",
+          date: "Fecha:",
+          valid: "Válida hasta:",
+          prepared: "Preparada para",
+          job: "Detalles del trabajo",
+          serviceDate: "Fecha del servicio:",
+          estimateOnly: "Este documento es un estimado, no una factura.",
+          description: "Descripción",
+          qty: "Cant.",
+          rate: "Precio",
+          amount: "Importe",
+          notes: "Notas y términos",
+          subtotal: "Subtotal",
+          discount: "Descuento",
+          tax: "Impuesto",
+          total: "Total",
+          deposit: "Depósito solicitado",
+          balance: "Balance restante",
+          approval: "Aprobación / firma del cliente",
+          signatureDate: "Fecha",
+          footer: "Gracias por la oportunidad de servirle.",
+          toSchedule: "Por coordinar"
+        },
+        both: {
+          title: "Estimate / Estimado",
+          quoteNumber: "Quote / Cotización #:",
+          date: "Date / Fecha:",
+          valid: "Valid until / Válida hasta:",
+          prepared: "Prepared for / Preparada para",
+          job: "Job details / Detalles",
+          serviceDate: "Service date / Fecha:",
+          estimateOnly: "This is an estimate, not an invoice. / Este documento es un estimado, no una factura.",
+          description: "Description / Descripción",
+          qty: "Qty / Cant.",
+          rate: "Rate / Precio",
+          amount: "Amount / Importe",
+          notes: "Notes & terms / Notas y términos",
+          subtotal: "Subtotal",
+          discount: "Discount / Descuento",
+          tax: "Tax / Impuesto",
+          total: "Total",
+          deposit: "Deposit / Depósito",
+          balance: "Balance / Balance",
+          approval: "Customer approval / Aprobación del cliente",
+          signatureDate: "Date / Fecha",
+          footer: "Thank you for your business. / Gracias por su confianza.",
+          toSchedule: "To be scheduled / Por coordinar"
+        }
+      };
+
+      const invoiceText = {
+        en: {title:"Invoice", quoteNumber:"Invoice #:", date:"Invoice date:", valid:"Due date:", prepared:"Bill to", job:"Job details", serviceDate:"Service date:", estimateOnly:"Invoice for the services listed below.", description:"Description", qty:"Qty", rate:"Rate", amount:"Amount", notes:"Notes & terms", subtotal:"Subtotal", discount:"Discount", tax:"Tax", total:"Invoice total", deposit:"Amount paid", balance:"Balance due", approval:"Customer acknowledgement / signature", signatureDate:"Date", footer:"Thank you for your business.", toSchedule:"To be scheduled", status:"Status:"},
+        es: {title:"Factura", quoteNumber:"Factura #:", date:"Fecha de factura:", valid:"Vence:", prepared:"Facturar a", job:"Detalles del trabajo", serviceDate:"Fecha del servicio:", estimateOnly:"Factura por los servicios indicados abajo.", description:"Descripción", qty:"Cant.", rate:"Precio", amount:"Importe", notes:"Notas y términos", subtotal:"Subtotal", discount:"Descuento", tax:"Impuesto", total:"Total de factura", deposit:"Monto pagado", balance:"Balance pendiente", approval:"Acuse / firma del cliente", signatureDate:"Fecha", footer:"Gracias por su confianza.", toSchedule:"Por coordinar", status:"Estado:"},
+        both: {title:"Invoice / Factura", quoteNumber:"Invoice / Factura #:", date:"Invoice date / Fecha:", valid:"Due date / Vence:", prepared:"Bill to / Facturar a", job:"Job details / Detalles", serviceDate:"Service date / Fecha:", estimateOnly:"Invoice for the services listed below. / Factura por los servicios indicados abajo.", description:"Description / Descripción", qty:"Qty / Cant.", rate:"Rate / Precio", amount:"Amount / Importe", notes:"Notes & terms / Notas y términos", subtotal:"Subtotal", discount:"Discount / Descuento", tax:"Tax / Impuesto", total:"Invoice total / Total", deposit:"Amount paid / Pagado", balance:"Balance due / Pendiente", approval:"Customer acknowledgement / Acuse", signatureDate:"Date / Fecha", footer:"Thank you for your business. / Gracias por su confianza.", toSchedule:"To be scheduled / Por coordinar", status:"Status / Estado:"}
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const inputs = [
+        "businessName","businessPhone","businessEmail","businessAddress",
+        "customerName","customerPhone","customerEmail","serviceDate","serviceAddress","quoteLanguage",
+        "documentType","documentDate","dueDate","invoiceStatus","amountPaid",
+        "paymentLink","paymentInstructions","stripePaymentLink","paypalPayment","venmoPayment","zellePayment","cashAppPayment","otherPaymentLabel","otherPayment","primaryPaymentMethod",
+        "discount","taxRate","deposit","validDays","workers","hoursEach","laborRate",
+        "materialsCost","miles","mileCost","otherCost","overheadCost","processingRate",
+        "targetMargin","internalNotes","notesEn","notesEs","termsEn","termsEs",
+        "accentColor","currencySymbol","quotePrefix","nextQuoteNumber"
+      ];
+
+      let state = {
+        uiLanguage: "en",
+        quoteNumber: "",
+        logoData: "",
+        items: [],
+        savedId: null,
+        signatureData: "",
+        signatureMode: "draw",
+        typedSignature: "",
+        signedDate: "",
+        lastPaymentAmount: 0,
+        lastPaymentDate: "",
+        contactNext: "", contactNotes: "", contactLog: [], contactDraft: {situation:"inquiry",tone:"professional",subject:"",message:""}
+      };
+
+      let activeEmailKind = "document";
+      let toastTimer;
+      let signatureContext = null;
+      let signatureDrawing = false;
+
+      function num(value) {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function positive(value) {
+        return Math.max(0, num(value));
+      }
+
+      function currency(value) {
+        const symbol = $("currencySymbol").value || "$";
+        const number = Number.isFinite(value) ? value : 0;
+        return `${number < 0 ? "−" : ""}${symbol}${Math.abs(number).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+
+      function securePaymentUrl(value) {
+        let raw = String(value || "").trim();
+        if (!raw) return "";
+        // Make common pasted payment links friendlier: paypal.me/name -> https://paypal.me/name
+        if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) raw = "https://" + raw.replace(/^\/+/, "");
+        try {
+          const url = new URL(raw);
+          return url.protocol === "https:" && url.hostname ? url.href : "";
+        } catch {
+          return "";
+        }
+      }
+
+      function documentType() {
+        return $("documentType").value === "invoice" ? "invoice" : "estimate";
+      }
+
+      function paymentOptions() {
+        const link = $("paymentLink").value.trim();
+        const instructions = $("paymentInstructions").value.trim();
+        const language = $("quoteLanguage").value;
+        const output = [];
+        if (securePaymentUrl(link)) output.push({key:"checkout", label: language === "es" ? "Pagar ahora" : language === "both" ? "Pay now / Pagar ahora" : "Pay now", value: link, url: securePaymentUrl(link)});
+        if (instructions) output.push({key:"instructions",label:language === "es" ? "Instrucciones" : "Payment instructions",value:instructions,url:""});
+        return output;
+      }
+
+      function primaryPaymentOption() {
+        return paymentOptions().find(item => item.url) || null;
+      }
+
+      function paymentOptionsText(language) {
+        const options = paymentOptions();
+        if (!options.length || !$("includePaymentLink").checked) return "";
+        const heading = language === "es" ? "Opciones de pago" : language === "both" ? "Payment options / Opciones de pago" : "Payment options";
+        return [heading, ...options.map(item => `${item.label}: ${item.value}`)].join("\n");
+      }
+
+      function htmlToPlainText(value) {
+        const node = document.createElement("div");
+        node.innerHTML = value;
+        return node.textContent || node.innerText || "";
+      }
+
+      async function copyPlainText(value, message) {
+        const text = String(value || "");
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+        }
+        if (message) showToast(message);
+      }
+
+      async function copyRichHtml(htmlValue, plainValue) {
+        try {
+          if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+            const item = new ClipboardItem({
+              "text/html": new Blob([htmlValue], {type: "text/html"}),
+              "text/plain": new Blob([plainValue], {type: "text/plain"})
+            });
+            await navigator.clipboard.write([item]);
+            return true;
+          }
+        } catch {}
+        try {
+          const holder = document.createElement("div");
+          holder.contentEditable = "true";
+          holder.style.position = "fixed";
+          holder.style.left = "-10000px";
+          holder.innerHTML = htmlValue;
+          document.body.appendChild(holder);
+          const range = document.createRange();
+          range.selectNodeContents(holder);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          const copied = document.execCommand("copy");
+          selection.removeAllRanges();
+          holder.remove();
+          return copied;
+        } catch {
+          await copyPlainText(plainValue);
+          return false;
+        }
+      }
+
+      function launchExternal(url) {
+        if (!url) return;
+        const opened = window.open(url, "_blank", "noopener");
+        if (!opened) showToast("Your browser blocked the new tab. Your work is still here; allow pop-ups for this file and try again.");
+      }
+
+      let emailDraftWindow = null;
+      function openOneEmailDraft() {
+        const data = currentEmailData();
+        if (!data.email) return showToast("Enter the customer’s valid email address first.");
+        if (emailDraftWindow && !emailDraftWindow.closed) {
+          emailDraftWindow.focus();
+          return showToast("Your email draft is already open. Attach the saved file there; no second Gmail tab was created.");
+        }
+        // Reuse a named tab, and never navigate this business tool away from its form.
+        emailDraftWindow = window.open(gmailComposeUrl(data, true), "estimate_invoice_email_draft");
+        if (!emailDraftWindow) return showToast("Gmail was blocked from opening. Allow pop-ups for this file and try again.");
+        emailDraftWindow.focus();
+      }
+
+      function isoToday() {
+        const now = new Date();
+        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+      }
+
+      function addDays(dateString, days) {
+        const base = dateString ? new Date(`${dateString}T12:00:00`) : new Date();
+        base.setDate(base.getDate() + Math.max(1, Math.round(days || 14)));
+        return base.toISOString().slice(0, 10);
+      }
+
+      function formatDate(dateString) {
+        if (!dateString) return "";
+        const date = new Date(`${dateString}T12:00:00`);
+        return date.toLocaleDateString(state.uiLanguage === "es" ? "es-US" : "en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+      }
+
+      function makeQuoteNumber() {
+        const prefix = ($("quotePrefix").value || "Q").trim().toUpperCase();
+        const next = Math.max(1, Math.round(num($("nextQuoteNumber").value) || 1001));
+        return `${prefix}-${next}`;
+      }
+
+      function showToast(message) {
+        const toast = $("toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+      }
+
+      function showModal(id) {
+        $(id).classList.add("show");
+      }
+
+      function hideModal(id) {
+        $(id).classList.remove("show");
+      }
