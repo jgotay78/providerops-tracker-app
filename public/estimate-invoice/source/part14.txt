@@ -1,0 +1,300 @@
+        $("previewDiscount").textContent = currency(-calc.discount);
+        $("previewTax").textContent = currency(calc.tax);
+        $("previewTotal").textContent = currency(calc.total);
+        if (type === "invoice") {
+          const amountPaid = Math.min(positive($("amountPaid").value), calc.total);
+          const balanceDue = Math.max(0, calc.total - amountPaid);
+          $("previewDeposit").textContent = currency(amountPaid);
+          $("previewBalance").textContent = currency(balanceDue);
+          $("previewDepositRow").classList.remove("hidden");
+          $("previewBalanceRow").classList.remove("hidden");
+        } else {
+          $("previewDeposit").textContent = currency(calc.deposit);
+          $("previewBalance").textContent = currency(calc.balance);
+          $("previewDepositRow").classList.toggle("hidden", calc.deposit <= 0);
+          $("previewBalanceRow").classList.toggle("hidden", calc.deposit <= 0);
+        }
+        $("previewDiscountRow").classList.toggle("hidden", calc.discount <= 0);
+        $("previewTaxRow").classList.toggle("hidden", calc.tax <= 0);
+
+        const options = paymentOptions();
+        const paidOff = type === "invoice" && calc.total > 0 && Math.max(0,calc.total-positive($("amountPaid").value)) <= .004;
+        const includePayment = $("includePaymentLink").checked && options.length > 0 && !paidOff;
+        $("previewPaymentBlock").classList.toggle("hidden", !includePayment);
+        $("previewPaymentLabel").textContent = language === "es" ? "Pagar ahora" : language === "both" ? "Pay now / Pagar ahora" : "Pay now";
+        const methodWrap = $("previewPaymentMethods");
+        methodWrap.innerHTML = "";
+        if (includePayment) {
+          options.forEach(option => {
+            const card = document.createElement("div");
+            card.className = "payment-preview-method";
+            card.innerHTML = option.url
+              ? `<strong>${escapeHtml(option.label)}</strong><a class="payment-button" href="${escapeHtml(option.url)}" target="_blank" rel="noopener">${escapeHtml(option.label)}</a><div class="payment-detail">${escapeHtml(option.value)}</div>`
+              : `<strong>${escapeHtml(option.label)}</strong><div class="payment-detail">${escapeHtml(option.value)}</div>`;
+            methodWrap.appendChild(card);
+          });
+        }
+        const primary = primaryPaymentOption();
+        // Keep QR button clickable so an invalid/missing link can explain what is wrong.
+        $("paymentQrButton").disabled = false;
+        $("paymentQrButton").title = primary ? "Show payment QR" : "Add a valid payment link to create a QR code";
+        $("openPrimaryPaymentButton").disabled = !primary;
+        const paymentStatus = $("paymentStatus");
+        paymentStatus.className = "stripe-status";
+        if (!options.length) {
+          paymentStatus.textContent = i18n[state.uiLanguage].paymentMissing;
+        } else {
+          paymentStatus.classList.add("ready");
+          paymentStatus.textContent = primary ? i18n[state.uiLanguage].paymentReady : (state.uiLanguage === "es" ? "Añade un enlace HTTPS para mostrar Pagar ahora." : "Add an HTTPS link to show Pay Now.");
+        }
+      }
+
+      function darkenHex(hex, percent) {
+        const clean = hex.replace("#", "");
+        if (clean.length !== 6) return "#06665e";
+        const amount = 1 - percent / 100;
+        const parts = [0,2,4].map(i => Math.max(0, Math.round(Number.parseInt(clean.slice(i, i + 2), 16) * amount)));
+        return `#${parts.map(value => value.toString(16).padStart(2, "0")).join("")}`;
+      }
+
+      function configureSignatureContext() {
+        if (!signatureContext) return;
+        signatureContext.lineWidth = 2.2;
+        signatureContext.lineCap = "round";
+        signatureContext.lineJoin = "round";
+        signatureContext.strokeStyle = "#172033";
+      }
+
+      function renderSignatureMode() {
+        const typed = state.signatureMode === "type";
+        $("signatureCanvas").classList.toggle("hidden", typed);
+        $("typedSignatureInput").classList.toggle("hidden", !typed);
+        $("drawSignatureMode").classList.toggle("active", !typed);
+        $("typeSignatureMode").classList.toggle("active", typed);
+        $("typedSignatureInput").value = state.typedSignature || "";
+        $("typedSignatureInput").placeholder = state.uiLanguage === "es" ? "Escribe el nombre completo" : "Type full name";
+        if (!typed) requestAnimationFrame(resizeSignatureCanvas);
+      }
+
+      function setSignatureMode(mode) {
+        state.signatureMode = mode === "type" ? "type" : "draw";
+        const hasActiveSignature = state.signatureMode === "type"
+          ? Boolean((state.typedSignature || "").trim())
+          : Boolean(state.signatureData);
+        state.signedDate = hasActiveSignature ? (state.signedDate || isoToday()) : "";
+        renderSignatureMode();
+        calculateAndRender();
+        persist();
+        if (state.signatureMode === "type") $("typedSignatureInput").focus();
+      }
+
+      function updateTypedSignature(event) {
+        state.signatureMode = "type";
+        state.typedSignature = event.target.value;
+        state.signedDate = state.typedSignature.trim() ? (state.signedDate || isoToday()) : "";
+        $("previewSignedDate").textContent = state.signedDate ? formatDate(state.signedDate) : "";
+        persist();
+      }
+
+      function resizeSignatureCanvas() {
+        const canvas = $("signatureCanvas");
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.round(rect.width));
+        const height = Math.max(1, Math.round(rect.height));
+        const ratio = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        signatureContext = canvas.getContext("2d");
+        signatureContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+        configureSignatureContext();
+        if (state.signatureData) {
+          const image = new Image();
+          image.onload = () => {
+            signatureContext.clearRect(0, 0, width, height);
+            signatureContext.drawImage(image, 0, 0, width, height);
+            configureSignatureContext();
+          };
+          image.src = state.signatureData;
+        }
+      }
+
+      function signaturePoint(event) {
+        const rect = $("signatureCanvas").getBoundingClientRect();
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      function startSignature(event) {
+        event.preventDefault();
+        const canvas = $("signatureCanvas");
+        canvas.setPointerCapture?.(event.pointerId);
+        const point = signaturePoint(event);
+        signatureDrawing = true;
+        signatureContext.beginPath();
+        signatureContext.moveTo(point.x, point.y);
+      }
+
+      function drawSignature(event) {
+        if (!signatureDrawing) return;
+        event.preventDefault();
+        const point = signaturePoint(event);
+        signatureContext.lineTo(point.x, point.y);
+        signatureContext.stroke();
+      }
+
+      function finishSignature(event) {
+        if (!signatureDrawing) return;
+        event.preventDefault();
+        signatureDrawing = false;
+        signatureContext.closePath();
+        state.signatureData = $("signatureCanvas").toDataURL("image/png");
+        if (!state.signedDate) state.signedDate = isoToday();
+        $("previewSignedDate").textContent = formatDate(state.signedDate);
+        persist();
+      }
+
+      function clearSignature() {
+        state.signatureData = "";
+        state.typedSignature = "";
+        state.signedDate = "";
+        $("typedSignatureInput").value = "";
+        renderSignatureMode();
+        calculateAndRender();
+        persist();
+      }
+
+      function captureForm() {
+        const fields = {};
+        inputs.forEach(id => fields[id] = $(id).value);
+        return {
+          version: 6,
+          fields,
+          includePaymentLink: $("includePaymentLink").checked,
+          state: {
+            uiLanguage: state.uiLanguage,
+            quoteNumber: state.quoteNumber,
+            logoData: state.logoData,
+            items: state.items,
+            savedId: state.savedId,
+            signatureData: state.signatureData,
+            signatureMode: state.signatureMode,
+            typedSignature: state.typedSignature,
+            signedDate: state.signedDate,
+            approvalKey: state.approvalKey || "",
+            approvalRecord: state.approvalRecord || null,
+            lastPaymentAmount: positive(state.lastPaymentAmount),
+            lastPaymentDate: state.lastPaymentDate || "",
+            contactNext: $("contactNext").value, contactNotes: $("contactNotes").value,
+            contactLog: state.contactLog || [],
+            contactDraft: {situation:$("contactSituation").value,tone:$("contactTone").value,subject:$("contactSubject").value,message:$("contactMessage").value}
+          }
+        };
+      }
+
+      function restoreForm(data) {
+        if (!data || !data.fields || !data.state) throw new Error("Invalid data");
+        inputs.forEach(id => {
+          if (Object.prototype.hasOwnProperty.call(data.fields, id)) $(id).value = data.fields[id];
+        });
+        // Upgrade older saved quotes: pick one legacy checkout URL if the new field is absent.
+        if (!$("paymentLink").value && !Object.prototype.hasOwnProperty.call(data.fields, "paymentLink")) {
+          const old = ["stripePaymentLink","paypalPayment","venmoPayment","cashAppPayment","otherPayment"]
+            .map(id => String(data.fields[id] || "").trim()).find(securePaymentUrl);
+          if (old) $("paymentLink").value = old;
+        }
+        $("includePaymentLink").checked = data.includePaymentLink !== false;
+        $("newPaymentAmount").value = "0";
+        if (!$("documentType").value) $("documentType").value = "estimate";
+        if (!$("documentDate").value) $("documentDate").value = isoToday();
+        if (!$("dueDate").value) $("dueDate").value = addDays($("documentDate").value || isoToday(), 14);
+        if (!$("invoiceStatus").value) $("invoiceStatus").value = "unpaid";
+        if (!$("primaryPaymentMethod").value) $("primaryPaymentMethod").value = "auto";
+        state = {
+          ...state,
+          ...data.state,
+          items: Array.isArray(data.state.items) && data.state.items.length ? data.state.items : [],
+          signatureMode: data.state.signatureMode === "type" ? "type" : "draw",
+          typedSignature: data.state.typedSignature || ""
+        };
+        if (!Array.isArray(state.contactLog)) state.contactLog = [];
+        const draft = state.contactDraft || {};
+        $("contactNext").value = state.contactNext || "";
+        $("contactNotes").value = state.contactNotes || "";
+        $("contactSituation").value = draft.situation || "inquiry";
+        $("contactTone").value = draft.tone || "professional";
+        $("contactSubject").value = draft.subject || "";
+        $("contactMessage").value = draft.message || "";
+        if (!state.items.length) addItem();
+        applyLanguage(EDITION_LANGUAGE);
+        renderContactLog(); renderContactQueue();
+        renderItems();
+        calculateAndRender();
+        requestAnimationFrame(resizeSignatureCanvas);
+      }
+
+      function persist() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(captureForm()));
+        } catch (error) {
+          if (String(error).includes("quota")) showToast(state.uiLanguage === "es" ? "El logo es demasiado grande para guardarse." : "The logo is too large to save.");
+        }
+      }
+
+      function getHistory() {
+        try {
+          const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+          return Array.isArray(history) ? history : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function setHistory(history) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 75)));
+      }
+
+      function saveQuote() {
+        const history = getHistory();
+        const payload = captureForm();
+        const calc = calculations();
+        const id = state.savedId || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+        payload.state.savedId = id;
+        state.savedId = id;
+        const record = {
+          id,
+          quoteNumber: state.quoteNumber,
+          documentType: documentType(),
+          customer: $("customerName").value.trim() || (state.uiLanguage === "es" ? "Cliente sin nombre" : "Unnamed customer"),
+          total: calc.total,
+          savedAt: new Date().toISOString(),
+          payload
+        };
+        const index = history.findIndex(item => item.id === id);
+        if (index >= 0) history[index] = record;
+        else history.unshift(record);
+        setHistory(history);
+        persist();
+        renderHistory(); renderContactQueue();
+        showToast(i18n[state.uiLanguage].documentSaved);
+      }
+
+      function renderHistory() {
+        const list = $("historyList");
+        const history = getHistory();
+        if (!history.length) {
+          list.innerHTML = `<div class="history-empty">${escapeHtml(i18n[state.uiLanguage].noQuotes)}</div>`;
+          return;
+        }
+        list.innerHTML = "";
+        history.forEach(record => {
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+            <div>
+              <h3>${escapeHtml((record.documentType === "invoice" ? (state.uiLanguage === "es" ? "Factura" : "Invoice") : (state.uiLanguage === "es" ? "Estimado" : "Estimate")))} ${escapeHtml(record.quoteNumber)} · ${escapeHtml(record.customer)}</h3>
+              <p>${new Date(record.savedAt).toLocaleString(state.uiLanguage === "es" ? "es-US" : "en-US", {dateStyle:"medium", timeStyle:"short"})}</p>
+            </div>
+            <div class="history-amount">
+              <strong>${currency(num(record.total))}</strong>
