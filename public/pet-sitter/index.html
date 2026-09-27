@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pet Sitter Client & Booking Manager</title>
+<meta name="theme-color" content="#355c4d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pet Sitter">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<style>
+  :root{
+    --bg:#f7f6f2;
+    --panel:#ffffff;
+    --text:#232323;
+    --muted:#6f6f6f;
+    --border:#e6e2da;
+    --soft:#f0ede6;
+    --accent:#355c4d;
+    --accent2:#d9eadf;
+    --danger:#a94b4b;
+    --shadow:0 10px 28px rgba(0,0,0,.07);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
+  body{
+    margin:0;
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+    font-family:Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:16px;
+    line-height:1.4;
+  }
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  .app{width:100%;max-width:1280px;margin:0 auto;padding:20px;overflow:hidden}
+  .topbar{
+    display:flex;gap:16px;align-items:center;justify-content:space-between;
+    margin-bottom:18px;flex-wrap:wrap
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand{min-width:0}
+  .brand-icon{
+    width:52px;height:52px;flex:0 0 52px;border-radius:15px;background:var(--accent);
+    color:#fff;display:grid;place-items:center;box-shadow:var(--shadow);
+    border:2px solid rgba(255,255,255,.85)
+  }
+  .brand-icon svg{width:34px;height:34px;fill:currentColor;display:block}
+  .brand>div:last-child{min-width:0}
+  h1{font-size:clamp(24px,3vw,34px);line-height:1.1;margin:0;overflow-wrap:anywhere}
+  .subtitle{color:var(--muted);margin-top:4px;font-size:14px}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{
+    border:1px solid var(--border);background:white;color:var(--text);
+    min-height:42px;padding:10px 14px;border-radius:12px;font-weight:700;
+    box-shadow:0 3px 10px rgba(0,0,0,.03);white-space:normal
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.soft{background:var(--accent2);border-color:transparent;color:#24493b}
+  .btn.danger{background:#fff4f4;color:var(--danger);border-color:#f2d6d6}
+  .tabs{
+    display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;
+    background:white;padding:8px;border-radius:15px;border:1px solid var(--border)
+  }
+  .tab{
+    border:0;background:transparent;padding:10px 14px;border-radius:10px;font-weight:700;color:#555
+  }
+  .tab.active{background:var(--accent);color:white}
+  .panel{display:none}
+  .panel.active{display:block}
+  .grid{display:grid;gap:16px}
+  .grid.two{grid-template-columns:1.1fr .9fr}
+  .grid.three{grid-template-columns:repeat(3,1fr)}
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow)
+  }
+  .card h2,.card h3{margin-top:0}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .stat{
+    background:white;border:1px solid var(--border);border-radius:16px;padding:16px
+  }
+  .stat .num{font-size:30px;font-weight:800}
+  .stat .label{color:var(--muted);font-size:13px;margin-top:4px}
+  .section-head{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap
+  }
+  .section-head h2{margin:0}
+  .empty{color:var(--muted);padding:18px;text-align:center;border:1px dashed var(--border);border-radius:14px}
+  .visit-list{display:grid;gap:10px}
+  .visit{
+    border:1px solid var(--border);border-radius:14px;padding:13px;
+    display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:#fff
+  }
+  .visit-title{font-weight:800}
+  .visit-meta{color:var(--muted);font-size:13px;margin-top:4px}
+  .visit-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .mini{padding:7px 9px;border-radius:9px;font-size:12px}
+  label{font-weight:700;font-size:13px;display:block;margin-bottom:6px}
+  input,select,textarea{
+    width:100%;border:1px solid var(--border);background:#fff;border-radius:11px;
+    padding:10px 11px;outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:#7f9d91;box-shadow:0 0 0 3px rgba(53,92,77,.08)}
+  textarea{min-height:84px;resize:vertical}
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .form-grid .full{grid-column:1/-1}
+  .calendar-wrap{overflow-x:auto}
+  .calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .calendar-toolbar h2{margin:0;text-align:center;min-width:220px}
+  .calendar{
+    min-width:760px;display:grid;grid-template-columns:repeat(7,1fr);
+    border:1px solid var(--border);border-radius:16px;overflow:hidden;background:white
+  }
+  .dow{
+    padding:10px;text-align:center;font-size:12px;font-weight:800;color:var(--muted);
+    background:var(--soft);border-right:1px solid var(--border)
+  }
+  .day{
+    min-height:120px;padding:8px;border-top:1px solid var(--border);border-right:1px solid var(--border);
+    position:relative
+  }
+  .day:nth-child(7n){border-right:0}
+  .day.other{background:#faf9f7;color:#aaa}
+  .day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+  .daynum{font-size:12px;font-weight:800;margin-bottom:6px}
+  .cal-item{
+    padding:5px 7px;border-radius:8px;background:var(--accent2);color:#24493b;
+    margin:4px 0;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .upcoming-calendars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .mini-calendar{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff}
+  .mini-calendar-title{padding:12px 10px;text-align:center;font-weight:800;background:var(--soft);border-bottom:1px solid var(--border)}
+  .mini-calendar-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .mini-dow{padding:7px 2px;text-align:center;font-size:10px;font-weight:800;color:var(--muted);border-bottom:1px solid var(--border)}
+  .mini-day{min-height:76px;padding:5px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden}
+  .mini-day:nth-child(7n){border-right:0}
+  .mini-day.blank{background:#faf9f7}
+  .mini-day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+  .mini-daynum{font-size:11px;font-weight:800;margin-bottom:4px}
+  .mini-booking{
+    display:block;width:100%;border:0;background:var(--accent2);color:#24493b;
+    border-radius:6px;padding:4px 5px;margin:3px 0;text-align:left;font-size:10px;font-weight:700;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .mini-booking:hover{filter:brightness(.97)}
+  .mini-more{font-size:9px;color:var(--muted);padding-top:2px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  th{font-size:12px;color:var(--muted)}
+  .pill{display:inline-block;padding:5px 8px;border-radius:999px;background:var(--soft);font-size:12px;font-weight:700}
+  .client-card{border:1px solid var(--border);border-radius:15px;padding:14px;background:white}
+  .client-card h3{margin:0 0 5px}
+  .pet-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pet-chip{background:var(--accent2);padding:6px 9px;border-radius:999px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}.pet-chip button{border:0;background:transparent;padding:0 2px;font-weight:900;color:#24493b}
+  .pet-thumb{width:24px;height:24px;border-radius:999px;object-fit:cover;border:1px solid rgba(0,0,0,.08);background:#fff}
+  .pet-photo-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .pet-photo-preview{width:84px;height:84px;border-radius:16px;object-fit:cover;border:1px solid var(--border);background:var(--soft);display:block}
+  .pet-photo-preview.empty{display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:8px}
+  .pet-photo-note{font-size:12px;color:var(--muted)}
+  .client-head{display:flex;align-items:center;gap:12px}
+  .client-pet-gallery{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+  .client-pet-photo{width:56px;height:56px;border-radius:14px;object-fit:cover;border:1px solid var(--border);background:var(--soft)}
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;
+    padding:18px;z-index:1000
+  }
+  .modal-backdrop.show{display:flex}
+  .modal{
+    width:min(760px,100%);max-height:92vh;overflow:auto;background:white;border-radius:20px;padding:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.2)
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .modal-head h2{margin:0}
+  .close{border:0;background:var(--soft);width:36px;height:36px;border-radius:10px;font-size:20px}
+  .help{
+    background:#fffbe9;border:1px solid #efe4b2;border-radius:14px;padding:13px;color:#5f5528;font-size:13px
+  }
+  .settings-note{color:var(--muted);font-size:13px}
+  .footer{color:var(--muted);text-align:center;font-size:12px;margin:22px 0 8px}
+  /* Tablets */
+  @media(max-width:1024px){
+    .app{padding:16px}
+    .topbar{align-items:flex-start}
+    .grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .upcoming-calendars{grid-template-columns:1fr}
+    .calendar{min-width:680px}
+  }
+
+  /* Small tablets / large phones */
+  @media(max-width:760px){
+    .topbar{gap:12px}
+    .brand{width:100%;align-items:flex-start}
+    .brand-icon{width:46px;height:46px;flex-basis:46px;border-radius:13px}
+    .brand-icon svg{width:30px;height:30px}
+    h1{font-size:24px;line-height:1.12}
+    .subtitle{font-size:13px}
+    .top-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+    .top-actions .btn{width:100%}
+
+    .tabs{
+      flex-wrap:nowrap;
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+      padding:6px;
+      gap:5px;
+      border-radius:13px;
+    }
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{
+      flex:0 0 auto;
+      min-height:42px;
+      padding:9px 12px;
+      font-size:13px;
+      white-space:nowrap;
+    }
+
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid.two,.grid.three{grid-template-columns:1fr}
+    .form-grid{grid-template-columns:1fr}
+    .form-grid .full{grid-column:auto}
+    .visit{grid-template-columns:1fr}
+    .visit-actions{justify-content:flex-start}
+    .card{padding:15px}
+    .section-head{align-items:flex-start}
+
+    input,select,textarea{font-size:16px;min-height:44px}
+    textarea{min-height:96px}
+    .modal-backdrop{padding:10px;align-items:flex-end}
+    .modal{
+      width:100%;
+      max-height:94dvh;
+      border-radius:20px 20px 8px 8px;
+      padding:16px;
+    }
+
+    .calendar-toolbar{gap:6px}
+    .calendar-toolbar h2{min-width:0;font-size:18px}
+    .calendar{
+      min-width:0;
+      width:100%;
+      border-radius:12px;
+    }
+    .dow{padding:7px 2px;font-size:10px}
+    .day{min-height:82px;padding:4px}
+    .daynum{font-size:10px;margin-bottom:3px}
+    .cal-item{padding:3px 4px;font-size:9px;margin:2px 0}
+
+    .mini-day{min-height:68px;padding:4px}
+    .mini-calendar-title{font-size:15px;padding:10px 8px}
+    .mini-booking{font-size:9px;padding:3px 4px}
+
+    table{min-width:680px}
+    .card>div[style*="overflow:auto"]{
+      overflow-x:auto!important;
+      -webkit-overflow-scrolling:touch;
+    }
+  }
+
+  /* Phones */
+  @media(max-width:480px){
+    .app{padding:10px}
+    .topbar{margin-bottom:12px}
+    .brand{gap:10px}
+    .brand-icon{width:44px;height:44px;flex-basis:44px}
+    .brand-icon svg{width:29px;height:29px}
+    h1{font-size:21px}
+    .subtitle{font-size:12px;line-height:1.3}
+    .top-actions{gap:7px}
+    .top-actions .btn{font-size:13px;padding:9px 8px}
+
+    .tabs{margin-bottom:12px}
+    .tab{font-size:12px;padding:8px 10px}
+
+    .stats{gap:8px;margin-bottom:12px}
+    .stat{padding:12px;border-radius:13px}
+    .stat .num{font-size:24px}
+    .stat .label{font-size:11px}
+
+    .card{padding:12px;border-radius:15px}
+    .card h2{font-size:19px}
+    .visit{padding:10px}
+    .visit-title{font-size:14px}
+    .visit-meta{font-size:12px}
+    .visit-actions{gap:5px}
+    .mini{min-height:38px;font-size:11px;padding:6px 8px}
+
+    .section-head .visit-actions{
+      width:100%;
+      display:grid;
+      grid-template-columns:1fr;
+    }
+    .section-head .visit-actions .btn{width:100%}
+
+    .mini-day{min-height:62px;padding:3px}
+    .mini-daynum{font-size:10px}
+    .mini-booking{font-size:8px;padding:3px}
+    .mini-more{font-size:8px}
+
+    .pet-photo-preview{width:74px;height:74px}
+    .client-pet-photo{width:50px;height:50px}
+  }
+  @media print{
+    .tabs,.top-actions,.btn,.footer{display:none!important}
+    body{background:#fff}
+    .card{box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 64 64" role="img" focusable="false">
+          <ellipse cx="19" cy="18" rx="7" ry="10"></ellipse>
+          <ellipse cx="33" cy="14" rx="7" ry="10"></ellipse>
+          <ellipse cx="47" cy="19" rx="7" ry="10"></ellipse>
+          <ellipse cx="12" cy="32" rx="7" ry="9"></ellipse>
+          <path d="M19 48c0-10 7-18 14-18s14 8 14 18c0 7-6 10-14 10s-14-3-14-10z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 id="brandName">Pet Sitter Client & Booking Manager</h1>
+        <div class="subtitle">Clients • Pets • Visits • Calendar • Reminders</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn soft" onclick="openBookingModal()">+ New Booking</button>
+      <button class="btn primary" onclick="openClientModal()">+ New Client</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="calendar">Calendar</button>
+    <button class="tab" data-tab="clients">Clients & Pets</button>
+    <button class="tab" data-tab="bookings">Bookings</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </div>
+
+  <section id="dashboard" class="panel active">
+    <div class="stats">
+      <div class="stat"><div class="num" id="statClients">0</div><div class="label">Clients</div></div>
+      <div class="stat"><div class="num" id="statPets">0</div><div class="label">Pets</div></div>
+      <div class="stat"><div class="num" id="statToday">0</div><div class="label">Visits Today</div></div>
+      <div class="stat"><div class="num" id="statUpcoming">0</div><div class="label">Next 3 Months</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-head"><h2>Today</h2><span id="todayLabel" class="pill"></span></div>
+      <div id="todayVisits" class="visit-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div>
+          <h2 style="margin-bottom:4px">Upcoming Visits</h2>
+          <div class="visit-meta">Three-month calendar view</div>
+        </div>
+        <div class="visit-actions">
+          <button class="btn mini" onclick="changeUpcomingPeriod(-3)">← Previous 3 Months</button>
+          <button class="btn mini" onclick="resetUpcomingPeriod()">Current</button>
+          <button class="btn mini" onclick="changeUpcomingPeriod(3)">Next 3 Months →</button>
+        </div>
+      </div>
+      <div id="upcomingCalendars" class="upcoming-calendars"></div>
+    </div>
+  </section>
+
+  <section id="calendar" class="panel">
+    <div class="card">
+      <div class="calendar-toolbar">
+        <button class="btn" onclick="changeMonth(-1)">←</button>
+        <h2 id="calendarTitle"></h2>
+        <button class="btn" onclick="changeMonth(1)">→</button>
+      </div>
+      <div class="calendar-wrap">
+        <div class="calendar" id="calendarGrid"></div>
+      </div>
+      <div class="help" style="margin-top:14px">
+        Calendar reminders are added through an <strong>.ics calendar file</strong>. Each booking can have up to two custom reminders—minutes, hours, days, or weeks before the visit. Your phone/computer calendar can notify you even when this HTML tool is closed.
+      </div>
+    </div>
+  </section>
+
+  <section id="clients" class="panel">
+    <div class="card">
+      <div class="section-head">
+        <h2>Clients & Pets</h2>
+        <button class="btn primary" onclick="openClientModal()">+ Add Client</button>
+      </div>
+      <input id="clientSearch" placeholder="Search client or pet..." oninput="renderClients()" style="margin-bottom:14px">
+      <div id="clientList" class="grid three"></div>
+    </div>
+  </section>
+
+  <section id="bookings" class="panel">
+    <div class="card">
+      <div class="section-head">
+        <h2>All Bookings</h2>
+        <button class="btn primary" onclick="openBookingModal()">+ Add Booking</button>
+      </div>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Time</th><th>Client / Pet</th><th>Service</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="bookingTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings" class="panel">
+    <div class="grid two">
+      <div class="card">
+        <h2>Business Settings</h2>
+        <div class="form-grid">
+          <div><label>Business Name</label><input id="setBusinessName" placeholder="Happy Paws Pet Care"></div>
+          <div><label>Your Name</label><input id="setOwnerName" placeholder="Your name"></div>
+          <div><label>Business Email</label><input id="setBusinessEmail" type="email" placeholder="hello@example.com"></div>
+          <div><label>Phone</label><input id="setBusinessPhone" placeholder="(555) 555-5555"></div>
+          <div><label>Default Reminder 1</label><input id="setReminder1Amount" type="number" min="0" value="1"></div>
+          <div><label>Reminder 1 Unit</label>
+            <select id="setReminder1Unit">
+              <option value="minutes">Minutes before</option>
+              <option value="hours">Hours before</option>
+              <option value="days" selected>Days before</option>
+              <option value="weeks">Weeks before</option>
+            </select>
+          </div>
+          <div><label>Default Reminder 2</label><input id="setReminder2Amount" type="number" min="0" value="1"></div>
+          <div><label>Reminder 2 Unit</label>
+            <select id="setReminder2Unit">
+              <option value="minutes">Minutes before</option>
+              <option value="hours" selected>Hours before</option>
+              <option value="days">Days before</option>
+              <option value="weeks">Weeks before</option>
+            </select>
+          </div>
+          <div class="full"><div class="help">Set an amount to <strong>0</strong> to turn that reminder off. You can still customize reminders separately for each booking.</div></div>
+        </div>
+        <button class="btn primary" onclick="saveSettings()" style="margin-top:12px">Save Settings</button>
+      </div>
+
+      <div class="card">
+        <h2>Backup & Restore</h2>
+        <p class="settings-note">Your information is saved in this browser on this device. Export a backup regularly so you can restore it later.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="exportData()">Export Backup</button>
+          <label class="btn" style="display:inline-block">
+            Import Backup
+            <input id="importFile" type="file" accept=".json" onchange="importData(event)" style="display:none">
+          </label>
+          <button class="btn danger" onclick="clearAllData()">Clear All Data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Email Templates</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>Booking Confirmation</label>
+          <textarea id="setConfirmationTemplate"></textarea>
+        </div>
+        <div class="full">
+          <label>Visit Reminder</label>
+          <textarea id="setReminderTemplate"></textarea>
+        </div>
+        <div class="full">
+          <label>Visit Report</label>
+          <textarea id="setReportTemplate"></textarea>
+        </div>
+      </div>
+      <p class="settings-note">Available placeholders: {client}, {pet}, {date}, {time}, {service}, {business}, {sitter}, {notes}</p>
+      <button class="btn primary" onclick="saveSettings()">Save Templates</button>
+    </div>
+  </section>
+
+  <div class="footer">Offline-first pet sitting business tool • Data stays in your browser unless you export it.</div>
+</div>
+
+<!-- Client Modal -->
+<div class="modal-backdrop" id="clientModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="clientModalTitle">Add Client</h2>
+      <button class="close" onclick="closeModal('clientModal')">×</button>
+    </div>
+    <input type="hidden" id="clientId">
+    <div class="form-grid">
+      <div><label>Client Name *</label><input id="clientName"></div>
+      <div><label>Email *</label><input id="clientEmail" type="email"></div>
+      <div><label>Phone</label><input id="clientPhone"></div>
+      <div><label>Emergency Contact</label><input id="clientEmergency"></div>
+      <div class="full"><label>Address</label><input id="clientAddress"></div>
+      <div class="full"><label>Client Notes</label><textarea id="clientNotes"></textarea></div>
+    </div>
+
+    <hr style="border:0;border-top:1px solid var(--border);margin:18px 0">
+    <div class="section-head"><h3 style="margin:0">Pet Information</h3></div>
+    <input type="hidden" id="petId">
+    <div class="form-grid">
+      <div><label>Pet Name *</label><input id="petName"></div>
+      <div><label>Pet Type</label>
+        <select id="petType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select>
+      </div>
+      <div><label>Breed</label><input id="petBreed"></div>
+      <div><label>Age</label><input id="petAge"></div>
+      <div class="full">
+        <label>Pet Picture</label>
+        <input id="petPhotoFile" type="file" accept="image/*" onchange="handleImageUpload('petPhotoFile','petPhotoData','petPhotoPreview')">
+        <input id="petPhotoData" type="hidden">
+        <div class="pet-photo-wrap" style="margin-top:8px">
+          <img id="petPhotoPreview" class="pet-photo-preview" alt="Pet photo preview">
+          <button type="button" class="btn mini" onclick="clearImageField('petPhotoData','petPhotoFile','petPhotoPreview')">Remove Picture</button>
+        </div>
+        <div class="pet-photo-note">Tip: a small square photo works best. The picture stays saved in this browser with the pet record.</div>
+      </div>
+      <div class="full"><label>Feeding Instructions</label><textarea id="petFeeding"></textarea></div>
+      <div class="full"><label>Medication / Allergies</label><textarea id="petMedication"></textarea></div>
+      <div class="full"><label>Behavior / Care Notes</label><textarea id="petCareNotes"></textarea></div>
+      <div class="full"><label>Veterinarian</label><input id="petVet" placeholder="Vet name / phone"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn" onclick="closeModal('clientModal')">Cancel</button>
+      <button class="btn primary" onclick="saveClient()">Save Client & Pet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pet Modal -->
+<div class="modal-backdrop" id="petModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="petModalTitle">Add Pet</h2>
+      <button class="close" onclick="closeModal('petModal')">×</button>
+    </div>
+    <input type="hidden" id="petModalClientId">
+    <input type="hidden" id="petModalPetId">
+    <div class="form-grid">
+      <div><label>Pet Name *</label><input id="petModalName"></div>
+      <div><label>Pet Type</label><select id="petModalType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select></div>
+      <div><label>Breed</label><input id="petModalBreed"></div>
+      <div><label>Age</label><input id="petModalAge"></div>
+      <div class="full">
+        <label>Pet Picture</label>
+        <input id="petModalPhotoFile" type="file" accept="image/*" onchange="handleImageUpload('petModalPhotoFile','petModalPhotoData','petModalPhotoPreview')">
+        <input id="petModalPhotoData" type="hidden">
+        <div class="pet-photo-wrap" style="margin-top:8px">
+          <img id="petModalPhotoPreview" class="pet-photo-preview" alt="Pet photo preview">
+          <button type="button" class="btn mini" onclick="clearImageField('petModalPhotoData','petModalPhotoFile','petModalPhotoPreview')">Remove Picture</button>
+        </div>
+        <div class="pet-photo-note">Optional photo for this pet's record.</div>
+      </div>
+      <div class="full"><label>Feeding Instructions</label><textarea id="petModalFeeding"></textarea></div>
+      <div class="full"><label>Medication / Allergies</label><textarea id="petModalMedication"></textarea></div>
+      <div class="full"><label>Behavior / Care Notes</label><textarea id="petModalCareNotes"></textarea></div>
+      <div class="full"><label>Veterinarian</label><input id="petModalVet" placeholder="Vet name / phone"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn danger" id="deletePetBtn" onclick="deletePetFromModal()" style="display:none">Delete Pet</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn" onclick="closeModal('petModal')">Cancel</button>
+        <button class="btn primary" onclick="savePetFromModal()">Save Pet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-backdrop" id="bookingModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="bookingModalTitle">New Booking</h2>
+      <button class="close" onclick="closeModal('bookingModal')">×</button>
+    </div>
+    <input type="hidden" id="bookingId">
+    <div class="form-grid">
+      <div><label>Client *</label><select id="bookingClient" onchange="populatePetSelect()"></select></div>
+      <div><label>Pet *</label><select id="bookingPet"></select></div>
+      <div><label>Date *</label><input id="bookingDate" type="date"></div>
+      <div><label>Time *</label><input id="bookingTime" type="time"></div>
+      <div><label>Service</label>
+        <select id="bookingService">
+          <option>Drop-In Visit</option>
+          <option>Dog Walk</option>
+          <option>Pet Sitting</option>
+          <option>Overnight Stay</option>
+          <option>Feeding Visit</option>
+          <option>Medication Visit</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div><label>Status</label>
+        <select id="bookingStatus">
+          <option>Scheduled</option>
+          <option>Confirmed</option>
+          <option>Completed</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+      <div><label>Price</label><input id="bookingPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div><label>Duration (minutes)</label><input id="bookingDuration" type="number" min="10" step="5" value="30"></div>
+      <div><label>Calendar Reminder 1</label><input id="bookingReminder1Amount" type="number" min="0" value="1"></div>
+      <div><label>Reminder 1 Unit</label>
+        <select id="bookingReminder1Unit">
+          <option value="minutes">Minutes before</option>
+          <option value="hours">Hours before</option>
+          <option value="days" selected>Days before</option>
+          <option value="weeks">Weeks before</option>
+        </select>
+      </div>
+      <div><label>Calendar Reminder 2</label><input id="bookingReminder2Amount" type="number" min="0" value="1"></div>
+      <div><label>Reminder 2 Unit</label>
+        <select id="bookingReminder2Unit">
+          <option value="minutes">Minutes before</option>
+          <option value="hours" selected>Hours before</option>
+          <option value="days">Days before</option>
+          <option value="weeks">Weeks before</option>
+        </select>
+      </div>
+      <div class="full"><div class="help">Examples: 2 days before + 30 minutes before, or 1 week before + 2 hours before. Set either amount to <strong>0</strong> to turn that reminder off.</div></div>
+      <div class="full"><label>Visit Notes</label><textarea id="bookingNotes" placeholder="Gate code, feeding details, walk instructions, etc."></textarea></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn" onclick="closeModal('bookingModal')">Cancel</button>
+      <button class="btn primary" onclick="saveBooking()">Save Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Visit Report</h2>
+      <button class="close" onclick="closeModal('reportModal')">×</button>
+    </div>
+    <input type="hidden" id="reportBookingId">
+    <div class="form-grid">
+      <div><label>Food</label><select id="reportFood"><option>Completed</option><option>Partial</option><option>Not needed</option></select></div>
+      <div><label>Water</label><select id="reportWater"><option>Refreshed</option><option>Checked</option><option>Not needed</option></select></div>
+      <div><label>Potty / Litter</label><select id="reportPotty"><option>Completed</option><option>No activity</option><option>Not needed</option></select></div>
+      <div><label>Medication</label><select id="reportMeds"><option>Not needed</option><option>Given</option><option>Unable to give</option></select></div>
+      <div class="full"><label>Visit Notes</label><textarea id="reportNotes" placeholder="How the visit went..."></textarea></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn" onclick="closeModal('reportModal')">Cancel</button>
+      <button class="btn primary" onclick="emailVisitReport()">Email Visit Report</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'petSitterManager_v1';
+
+const defaultData = {
+  settings: {
+    businessName: 'Pet Sitter Client & Booking Manager',
+    ownerName: '',
+    businessEmail: '',
+    businessPhone: '',
+    reminder1Amount: 1,
+    reminder1Unit: 'days',
+    reminder2Amount: 1,
+    reminder2Unit: 'hours',
+    confirmationTemplate:
+`Hi {client},
+
+This is your booking confirmation for {pet}.
+
+Date: {date}
+Time: {time}
+Service: {service}
+
+If anything changes, please reply to this email.
+
+Thank you,
+{sitter}
+{business}`,
+    reminderTemplate:
+`Hi {client},
+
+Just a reminder that {pet}'s {service} is scheduled for {date} at {time}.
+
+Please let me know if there are any updates to feeding, medication, access instructions, or care notes.
+
+Thank you,
+{sitter}
+{business}`,
+    reportTemplate:
+`Hi {client},
+
+{pet}'s visit is complete! 🐾
+
+{notes}
+
+Thank you,
+{sitter}
+{business}`
+  },
+  clients: [],
+  bookings: []
+};
+
+let data = loadData();
+let currentCalendar = new Date();
+currentCalendar.setDate(1);
+let upcomingStart = new Date();
+upcomingStart.setDate(1);
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? {...defaultData, ...JSON.parse(raw)} : structuredClone(defaultData);
+  }catch(e){ return structuredClone(defaultData); }
+}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  renderAll();
+}
+function uid(prefix='id'){ return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7); }
+function esc(s=''){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+function fmtDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr+'T00:00:00');
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+}
+function fmtTime(timeStr){
+  if(!timeStr) return '';
+  const [h,m]=timeStr.split(':').map(Number);
+  return new Date(2000,0,1,h,m).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+}
+function ymd(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function localDateFromBooking(b){ return new Date(`${b.date}T${b.time||'00:00'}:00`); }
+function getClient(id){ return data.clients.find(c=>c.id===id); }
+function getPet(client,petId){ return client?.pets?.find(p=>p.id===petId); }
+function getBookingContext(b){
+  const c=getClient(b.clientId), p=getPet(c,b.petId);
+  return {client:c, pet:p};
+}
+function replaceTemplate(t,b,extraNotes=''){
+  const {client,pet}=getBookingContext(b);
+  const map={
+    '{client}':client?.name||'',
+    '{pet}':pet?.name||'',
+    '{date}':fmtDate(b.date),
+    '{time}':fmtTime(b.time),
+    '{service}':b.service||'',
+    '{business}':data.settings.businessName||'',
+    '{sitter}':data.settings.ownerName||'',
+    '{notes}':extraNotes || b.notes || ''
+  };
+  let out=t||'';
+  Object.entries(map).forEach(([k,v])=>out=out.split(k).join(v));
+  return out;
+}
+function mailto(email,subject,body){
+  const url=`mailto:${encodeURIComponent(email||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href=url;
+}
+function setImagePreview(previewId, dataUrl=''){
+  const preview=document.getElementById(previewId);
+  if(!preview) return;
+  if(dataUrl){
+    preview.src=dataUrl;
+    preview.style.display='block';
+    preview.classList.remove('empty');
+    preview.alt='Pet photo preview';
+  } else {
+    preview.removeAttribute('src');
+    preview.style.display='grid';
+    preview.classList.add('empty');
+    preview.alt='No pet photo selected';
+    preview.innerHTML='No picture selected';
+  }
+}
+function clearImageField(hiddenId,fileId,previewId){
+  const hidden=document.getElementById(hiddenId);
+  const file=document.getElementById(fileId);
+  if(hidden) hidden.value='';
+  if(file) file.value='';
+  const preview=document.getElementById(previewId);
+  if(preview){
+    preview.removeAttribute('src');
+    preview.style.display='grid';
+    preview.classList.add('empty');
+    preview.alt='No pet photo selected';
+    preview.innerHTML='No picture selected';
+  }
+}
+function handleImageUpload(fileId, hiddenId, previewId){
+  const input=document.getElementById(fileId);
+  const hidden=document.getElementById(hiddenId);
+  const file=input?.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    alert('Please choose an image file.');
+    input.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=640;
+      let w=img.width, h=img.height;
+      const scale=Math.min(1,max/Math.max(w,h));
+      w=Math.max(1,Math.round(w*scale));
+      h=Math.max(1,Math.round(h*scale));
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',0.72);
+      if(hidden) hidden.value=compressed;
+      setImagePreview(previewId,compressed);
+    };
+    img.src=String(reader.result||'');
+  };
+  reader.readAsDataURL(file);
+}
+
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='calendar') renderCalendar();
+  });
+});
+
+function renderAll(){
+  renderStats();
+  renderDashboard();
+  renderClients();
+  renderBookings();
+  renderCalendar();
+  loadSettingsForm();
+  document.getElementById('brandName').textContent=data.settings.businessName||'Pet Sitter Client & Booking Manager';
+}
+function renderStats(){
+  const now=new Date();
+  const today=ymd(now);
+  const end=new Date(now.getFullYear(), now.getMonth()+3, 1);
+  const pets=data.clients.reduce((n,c)=>n+(c.pets?.length||0),0);
+  const todayCount=data.bookings.filter(b=>b.date===today && b.status!=='Cancelled').length;
+  const upcoming=data.bookings.filter(b=>{
+    const d=localDateFromBooking(b);
+    return d>=now && d<end && b.status!=='Cancelled';
+  }).length;
+  document.getElementById('statClients').textContent=data.clients.length;
+  document.getElementById('statPets').textContent=pets;
+  document.getElementById('statToday').textContent=todayCount;
+  document.getElementById('statUpcoming').textContent=upcoming;
+}
+function visitCard(b){
+  const {client,pet}=getBookingContext(b);
+  return `<div class="visit">
+    <div>
+      <div class="visit-title">${esc(fmtTime(b.time))} • ${esc(pet?.name||'Pet')} — ${esc(b.service)}</div>
+      <div class="visit-meta">${esc(client?.name||'Unknown client')} • ${esc(b.status)}${b.price?` • $${Number(b.price).toFixed(2)}`:''}</div>
+    </div>
+    <div class="visit-actions">
+      <button class="btn mini" onclick="sendConfirmation('${b.id}')">Confirmation</button>
+      <button class="btn mini" onclick="sendReminder('${b.id}')">Reminder</button>
+      <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Add to Calendar</button>
+      <button class="btn mini" onclick="openReportModal('${b.id}')">Visit Report</button>
+    </div>
+  </div>`;
+}
+function renderDashboard(){
+  const today=new Date();
+  const todayStr=ymd(today);
+  document.getElementById('todayLabel').textContent=today.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  const todayBookings=data.bookings.filter(b=>b.date===todayStr && b.status!=='Cancelled').sort((a,b)=>a.time.localeCompare(b.time));
+  document.getElementById('todayVisits').innerHTML=todayBookings.length?todayBookings.map(visitCard).join(''):'<div class="empty">No visits scheduled today.</div>';
+  renderUpcomingCalendars();
+}
+function changeUpcomingPeriod(months){
+  upcomingStart=new Date(upcomingStart.getFullYear(),upcomingStart.getMonth()+months,1);
+  renderUpcomingCalendars();
+}
+function resetUpcomingPeriod(){
+  upcomingStart=new Date();
+  upcomingStart.setDate(1);
+  renderUpcomingCalendars();
+}
+function renderUpcomingCalendars(){
+  const wrap=document.getElementById('upcomingCalendars');
+  if(!wrap) return;
+  let html='';
+  for(let offset=0; offset<3; offset++){
+    const monthDate=new Date(upcomingStart.getFullYear(),upcomingStart.getMonth()+offset,1);
+    const year=monthDate.getFullYear();
+    const month=monthDate.getMonth();
+    const firstDay=new Date(year,month,1).getDay();
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const title=monthDate.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+    html+=`<div class="mini-calendar"><div class="mini-calendar-title">${title}</div><div class="mini-calendar-grid">`;
+    ['S','M','T','W','T','F','S'].forEach(d=>html+=`<div class="mini-dow">${d}</div>`);
+    for(let blank=0; blank<firstDay; blank++) html+='<div class="mini-day blank"></div>';
+    for(let day=1; day<=daysInMonth; day++){
+      const dateObj=new Date(year,month,day);
+      const dateStr=ymd(dateObj);
+      const bookings=data.bookings
+        .filter(b=>b.date===dateStr && b.status!=='Cancelled')
+        .sort((a,b)=>a.time.localeCompare(b.time));
+      const isToday=dateStr===ymd(new Date());
+      html+=`<div class="mini-day ${isToday?'today':''}" onclick="if(event.target===this||event.target.classList.contains('daynum')||event.target.classList.contains('mini-daynum'))openBookingModal('${dateStr}')">
+        <div class="mini-daynum">${day}</div>`;
+      bookings.slice(0,3).forEach(b=>{
+        const {pet}=getBookingContext(b);
+        html+=`<button class="mini-booking" title="${esc(fmtTime(b.time)+' • '+(pet?.name||'Pet')+' • '+b.service)}" onclick="editBooking('${b.id}')">${esc(fmtTime(b.time))} ${esc(pet?.name||'Pet')}</button>`;
+      });
+      if(bookings.length>3) html+=`<div class="mini-more">+${bookings.length-3} more</div>`;
+      html+='</div>';
+    }
+    const used=firstDay+daysInMonth;
+    const trailing=(7-(used%7))%7;
+    for(let blank=0; blank<trailing; blank++) html+='<div class="mini-day blank"></div>';
+    html+='</div></div>';
+  }
+  wrap.innerHTML=html;
+}
+function renderClients(){
+  const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+  const list=data.clients.filter(c=>{
+    const petNames=(c.pets||[]).map(p=>p.name).join(' ').toLowerCase();
+    return (c.name+' '+petNames).toLowerCase().includes(q);
+  });
+  const box=document.getElementById('clientList');
+  if(!box) return;
+  box.innerHTML=list.length?list.map(c=>`
+    <div class="client-card">
+      <div class="section-head">
+        <div><h3>${esc(c.name)}</h3><div class="visit-meta">${esc(c.email||'')} ${c.phone?`• ${esc(c.phone)}`:''}</div></div>
+        <div class="visit-actions">
+          <button class="btn mini" onclick="editClient('${c.id}')">Edit</button>
+          <button class="btn mini danger" onclick="deleteClient('${c.id}')">Delete</button>
+        </div>
+      </div>
+      <div class="pet-chips">${(c.pets||[]).map(p=>`<span class="pet-chip">🐾 ${esc(p.name)} · ${esc(p.type||'Pet')} <button title="Edit pet" onclick="event.stopPropagation();openPetModal('${c.id}','${p.id}')">✎</button></span>`).join('')}</div>
+      <div style="margin-top:10px"><button class="btn mini soft" onclick="openPetModal('${c.id}')">+ Add Pet</button></div>
+      ${c.address?`<div class="visit-meta" style="margin-top:9px">${esc(c.address)}</div>`:''}
+    </div>`).join(''):'<div class="empty" style="grid-column:1/-1">No clients yet. Add your first client and pet.</div>';
+}
+function renderBookings(){
+  const tbody=document.getElementById('bookingTableBody');
+  if(!tbody) return;
+  const rows=[...data.bookings].sort((a,b)=>localDateFromBooking(a)-localDateFromBooking(b));
+  tbody.innerHTML=rows.length?rows.map(b=>{
+    const {client,pet}=getBookingContext(b);
+    return `<tr>
+      <td>${esc(fmtDate(b.date))}</td><td>${esc(fmtTime(b.time))}</td>
+      <td><strong>${esc(client?.name||'')}</strong><br><span class="visit-meta">${esc(pet?.name||'')}</span></td>
+      <td>${esc(b.service)}</td><td><span class="pill">${esc(b.status)}</span></td>
+      <td>
+        <div class="visit-actions" style="justify-content:flex-start">
+          <button class="btn mini" onclick="editBooking('${b.id}')">Edit</button>
+          <button class="btn mini" onclick="sendReminder('${b.id}')">Reminder</button>
+          <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Calendar</button>
+          <button class="btn mini danger" onclick="deleteBooking('${b.id}')">Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="6"><div class="empty">No bookings yet.</div></td></tr>';
+}
+function renderCalendar(){
+  const grid=document.getElementById('calendarGrid');
+  if(!grid) return;
+  const y=currentCalendar.getFullYear(), m=currentCalendar.getMonth();
+  document.getElementById('calendarTitle').textContent=currentCalendar.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html=days.map(d=>`<div class="dow">${d}</div>`).join('');
+  const first=new Date(y,m,1), startDay=first.getDay(), daysInMonth=new Date(y,m+1,0).getDate();
+  const prevDays=new Date(y,m,0).getDate();
+  const totalCells=Math.ceil((startDay+daysInMonth)/7)*7;
+  for(let i=0;i<totalCells;i++){
+    let cellDate, num, other=false;
+    if(i<startDay){ num=prevDays-startDay+i+1; cellDate=new Date(y,m-1,num); other=true; }
+    else if(i>=startDay+daysInMonth){ num=i-(startDay+daysInMonth)+1; cellDate=new Date(y,m+1,num); other=true; }
+    else{ num=i-startDay+1; cellDate=new Date(y,m,num); }
+    const dateStr=ymd(cellDate);
+    const items=data.bookings.filter(b=>b.date===dateStr && b.status!=='Cancelled').sort((a,b)=>a.time.localeCompare(b.time));
+    const isToday=dateStr===ymd(new Date());
+    html+=`<div class="day ${other?'other':''} ${isToday?'today':''}" onclick="if(event.target===this||event.target.classList.contains('daynum')||event.target.classList.contains('mini-daynum'))openBookingModal('${dateStr}')">
+      <div class="daynum">${num}</div>
+      ${items.map(b=>{const {pet}=getBookingContext(b);return `<div class="cal-item" title="${esc(b.service)}" onclick="editBooking('${b.id}')">${esc(fmtTime(b.time))} ${esc(pet?.name||'Pet')}</div>`}).join('')}
+    </div>`;
+  }
+  grid.innerHTML=html;
+}
+function changeMonth(delta){ currentCalendar=new Date(currentCalendar.getFullYear(),currentCalendar.getMonth()+delta,1); renderCalendar(); }
+
+function openClientModal(){
+  document.getElementById('clientModalTitle').textContent='Add Client';
+  ['clientId','clientName','clientEmail','clientPhone','clientEmergency','clientAddress','clientNotes','petId','petName','petBreed','petAge','petFeeding','petMedication','petCareNotes','petVet','petPhotoData'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('petType').value='Dog';
+  clearImageField('petPhotoData','petPhotoFile','petPhotoPreview');
+  document.getElementById('clientModal').classList.add('show');
+}
+function editClient(id){
+  const c=getClient(id); if(!c) return;
+  const p=(c.pets||[])[0]||{};
+  document.getElementById('clientModalTitle').textContent='Edit Client';
+  document.getElementById('clientId').value=c.id;
+  document.getElementById('clientName').value=c.name||'';
+  document.getElementById('clientEmail').value=c.email||'';
+  document.getElementById('clientPhone').value=c.phone||'';
+  document.getElementById('clientEmergency').value=c.emergency||'';
+  document.getElementById('clientAddress').value=c.address||'';
+  document.getElementById('clientNotes').value=c.notes||'';
+  document.getElementById('petId').value=p.id||'';
+  document.getElementById('petName').value=p.name||'';
+  document.getElementById('petType').value=p.type||'Dog';
+  document.getElementById('petBreed').value=p.breed||'';
+  document.getElementById('petAge').value=p.age||'';
+  document.getElementById('petFeeding').value=p.feeding||'';
+  document.getElementById('petMedication').value=p.medication||'';
+  document.getElementById('petCareNotes').value=p.careNotes||'';
+  document.getElementById('petVet').value=p.vet||'';
+  document.getElementById('petPhotoData').value=p.photo||'';
+  setImagePreview('petPhotoPreview', p.photo||'');
+  document.getElementById('clientModal').classList.add('show');
+}
+function saveClient(){
+  const name=document.getElementById('clientName').value.trim();
+  const email=document.getElementById('clientEmail').value.trim();
+  const petName=document.getElementById('petName').value.trim();
+  if(!name||!email||!petName){ alert('Please enter the client name, email, and pet name.'); return; }
+  const id=document.getElementById('clientId').value;
+  const petObj={
+    id:document.getElementById('petId').value||uid('pet'),
+    name:petName,
+    type:document.getElementById('petType').value,
+    breed:document.getElementById('petBreed').value.trim(),
+    age:document.getElementById('petAge').value.trim(),
+    photo:document.getElementById('petPhotoData').value || '',
+    feeding:document.getElementById('petFeeding').value.trim(),
+    medication:document.getElementById('petMedication').value.trim(),
+    careNotes:document.getElementById('petCareNotes').value.trim(),
+    vet:document.getElementById('petVet').value.trim()
+  };
+  let pets=[petObj];
+  if(id){
+    const existing=getClient(id);
+    pets=[...(existing?.pets||[])];
+    const pi=pets.findIndex(p=>p.id===petObj.id);
+    if(pi>-1) pets[pi]=petObj; else pets.push(petObj);
+  }
+  const clientObj={
+    id:id||uid('client'), name,email,
+    phone:document.getElementById('clientPhone').value.trim(),
+    emergency:document.getElementById('clientEmergency').value.trim(),
+    address:document.getElementById('clientAddress').value.trim(),
+    notes:document.getElementById('clientNotes').value.trim(),
+    pets
+  };
+  if(id){
+    const idx=data.clients.findIndex(c=>c.id===id);
+    if(idx>-1) data.clients[idx]=clientObj;
+  } else data.clients.push(clientObj);
+  saveData(); closeModal('clientModal');
+}
+function deleteClient(id){
+  if(!confirm('Delete this client, pet information, and all related bookings?')) return;
+  data.clients=data.clients.filter(c=>c.id!==id);
+  data.bookings=data.bookings.filter(b=>b.clientId!==id);
+  saveData();
+}
+function openPetModal(clientId,petId=''){
+  const c=getClient(clientId); if(!c) return;
+  const p=(c.pets||[]).find(x=>x.id===petId)||{};
+  document.getElementById('petModalClientId').value=clientId;
+  document.getElementById('petModalPetId').value=petId;
+  document.getElementById('petModalTitle').textContent=petId?`Edit ${p.name||'Pet'}`:`Add Pet for ${c.name}`;
+  document.getElementById('petModalName').value=p.name||'';
+  document.getElementById('petModalType').value=p.type||'Dog';
+  document.getElementById('petModalBreed').value=p.breed||'';
+  document.getElementById('petModalAge').value=p.age||'';
+  document.getElementById('petModalFeeding').value=p.feeding||'';
+  document.getElementById('petModalMedication').value=p.medication||'';
+  document.getElementById('petModalCareNotes').value=p.careNotes||'';
+  document.getElementById('petModalVet').value=p.vet||'';
+  document.getElementById('petModalPhotoData').value=p.photo||'';
+  document.getElementById('petModalPhotoFile').value='';
+  setImagePreview('petModalPhotoPreview', p.photo||'');
+  document.getElementById('deletePetBtn').style.display=petId?'inline-block':'none';
+  document.getElementById('petModal').classList.add('show');
+}
+function savePetFromModal(){
+  const clientId=document.getElementById('petModalClientId').value;
+  const petId=document.getElementById('petModalPetId').value;
+  const c=getClient(clientId); if(!c) return;
+  const name=document.getElementById('petModalName').value.trim();
+  if(!name){ alert('Please enter the pet name.'); return; }
+  const p={
+    id:petId||uid('pet'), name,
+    type:document.getElementById('petModalType').value,
+    breed:document.getElementById('petModalBreed').value.trim(),
+    age:document.getElementById('petModalAge').value.trim(),
+    photo:document.getElementById('petModalPhotoData').value || '',
+    feeding:document.getElementById('petModalFeeding').value.trim(),
+    medication:document.getElementById('petModalMedication').value.trim(),
+    careNotes:document.getElementById('petModalCareNotes').value.trim(),
+    vet:document.getElementById('petModalVet').value.trim()
+  };
+  c.pets=c.pets||[];
+  const idx=c.pets.findIndex(x=>x.id===p.id);
+  if(idx>-1) c.pets[idx]=p; else c.pets.push(p);
+  saveData(); closeModal('petModal');
+}
+function deletePetFromModal(){
+  const clientId=document.getElementById('petModalClientId').value;
+  const petId=document.getElementById('petModalPetId').value;
+  const c=getClient(clientId); if(!c||!petId) return;
+  if(!confirm('Delete this pet and its related bookings?')) return;
+  c.pets=(c.pets||[]).filter(p=>p.id!==petId);
+  data.bookings=data.bookings.filter(b=>!(b.clientId===clientId&&b.petId===petId));
+  saveData(); closeModal('petModal');
+}
+
+function openBookingModal(prefillDate=''){
+  if(!data.clients.length){ alert('Add a client and pet first.'); openClientModal(); return; }
+  document.getElementById('bookingModalTitle').textContent='New Booking';
+  document.getElementById('bookingId').value='';
+  populateClientSelect();
+  document.getElementById('bookingDate').value=prefillDate||ymd(new Date());
+  document.getElementById('bookingTime').value='09:00';
+  document.getElementById('bookingService').value='Drop-In Visit';
+  document.getElementById('bookingStatus').value='Scheduled';
+  document.getElementById('bookingPrice').value='';
+  document.getElementById('bookingDuration').value='30';
+  document.getElementById('bookingReminder1Amount').value=Number(data.settings.reminder1Amount ?? 1);
+  document.getElementById('bookingReminder1Unit').value=data.settings.reminder1Unit || 'days';
+  document.getElementById('bookingReminder2Amount').value=Number(data.settings.reminder2Amount ?? 1);
+  document.getElementById('bookingReminder2Unit').value=data.settings.reminder2Unit || 'hours';
+  document.getElementById('bookingNotes').value='';
+  document.getElementById('bookingModal').classList.add('show');
+}
+function populateClientSelect(selected=''){
+  const s=document.getElementById('bookingClient');
+  s.innerHTML=data.clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  if(selected) s.value=selected;
+  populatePetSelect();
+}
+function populatePetSelect(selected=''){
+  const cid=document.getElementById('bookingClient').value;
+  const c=getClient(cid);
+  const s=document.getElementById('bookingPet');
+  s.innerHTML=(c?.pets||[]).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if(selected) s.value=selected;
+}
+function saveBooking(){
+  const id=document.getElementById('bookingId').value;
+  const obj={
+    id:id||uid('booking'),
+    clientId:document.getElementById('bookingClient').value,
+    petId:document.getElementById('bookingPet').value,
+    date:document.getElementById('bookingDate').value,
+    time:document.getElementById('bookingTime').value,
+    service:document.getElementById('bookingService').value,
+    status:document.getElementById('bookingStatus').value,
+    price:document.getElementById('bookingPrice').value,
+    duration:document.getElementById('bookingDuration').value||30,
+    reminder1Amount:Number(document.getElementById('bookingReminder1Amount').value||0),
+    reminder1Unit:document.getElementById('bookingReminder1Unit').value,
+    reminder2Amount:Number(document.getElementById('bookingReminder2Amount').value||0),
+    reminder2Unit:document.getElementById('bookingReminder2Unit').value,
+    notes:document.getElementById('bookingNotes').value.trim()
+  };
+  if(!obj.clientId||!obj.petId||!obj.date||!obj.time){ alert('Please complete client, pet, date, and time.'); return; }
+  if(id){
+    const idx=data.bookings.findIndex(b=>b.id===id);
+    if(idx>-1) data.bookings[idx]=obj;
+  } else data.bookings.push(obj);
+  saveData(); closeModal('bookingModal');
+}
+function editBooking(id){
+  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  document.getElementById('bookingModalTitle').textContent='Edit Booking';
+  document.getElementById('bookingId').value=b.id;
+  populateClientSelect(b.clientId);
+  populatePetSelect(b.petId);
+  document.getElementById('bookingDate').value=b.date;
+  document.getElementById('bookingTime').value=b.time;
+  document.getElementById('bookingService').value=b.service;
+  document.getElementById('bookingStatus').value=b.status;
+  document.getElementById('bookingPrice').value=b.price||'';
+  document.getElementById('bookingDuration').value=b.duration||30;
+  document.getElementById('bookingReminder1Amount').value=Number(b.reminder1Amount ?? data.settings.reminder1Amount ?? 1);
+  document.getElementById('bookingReminder1Unit').value=b.reminder1Unit || data.settings.reminder1Unit || 'days';
+  document.getElementById('bookingReminder2Amount').value=Number(b.reminder2Amount ?? data.settings.reminder2Amount ?? 1);
+  document.getElementById('bookingReminder2Unit').value=b.reminder2Unit || data.settings.reminder2Unit || 'hours';
+  document.getElementById('bookingNotes').value=b.notes||'';
+  document.getElementById('bookingModal').classList.add('show');
+}
+function deleteBooking(id){
+  if(!confirm('Delete this booking?')) return;
+  data.bookings=data.bookings.filter(b=>b.id!==id); saveData();
+}
+
+function sendConfirmation(id){
+  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  const {client,pet}=getBookingContext(b);
+  const body=replaceTemplate(data.settings.confirmationTemplate,b);
+  mailto(client?.email,`Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+}
+function sendReminder(id){
+  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  const {client,pet}=getBookingContext(b);
+  const body=replaceTemplate(data.settings.reminderTemplate,b);
+  mailto(client?.email,`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+}
+function openReportModal(id){
+  document.getElementById('reportBookingId').value=id;
+  document.getElementById('reportFood').value='Completed';
+  document.getElementById('reportWater').value='Refreshed';
+  document.getElementById('reportPotty').value='Completed';
+  document.getElementById('reportMeds').value='Not needed';
+  document.getElementById('reportNotes').value='';
+  document.getElementById('reportModal').classList.add('show');
+}
+function emailVisitReport(){
+  const id=document.getElementById('reportBookingId').value;
+  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  const {client,pet}=getBookingContext(b);
+  const details=[
+    `Food: ${document.getElementById('reportFood').value}`,
+    `Water: ${document.getElementById('reportWater').value}`,
+    `Potty/Litter: ${document.getElementById('reportPotty').value}`,
+    `Medication: ${document.getElementById('reportMeds').value}`,
+    '',
+    document.getElementById('reportNotes').value.trim()
+  ].join('\n');
+  const body=replaceTemplate(data.settings.reportTemplate,b,details);
+  b.status='Completed'; saveData();
+  closeModal('reportModal');
+  mailto(client?.email,`${pet?.name||'Pet'} — Visit Report`,body);
+}
+
+function addToCalendar(id){
+  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  const {client,pet}=getBookingContext(b);
+  const start=new Date(`${b.date}T${b.time}:00`);
+  const end=new Date(start.getTime()+(Number(b.duration||30)*60000));
+  const pad=n=>String(n).padStart(2,'0');
+  const icsDate=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  function reminderTrigger(amount, unit){
+    amount=Number(amount||0);
+    if(amount<=0) return '';
+    if(unit==='weeks') return `-P${amount*7}D`;
+    if(unit==='days') return `-P${amount}D`;
+    if(unit==='hours') return `-PT${amount}H`;
+    return `-PT${amount}M`;
+  }
+  function alarmBlock(amount,unit){
+    const trigger=reminderTrigger(amount,unit);
+    if(!trigger) return '';
+    return `BEGIN:VALARM\r\nTRIGGER:${trigger}\r\nACTION:DISPLAY\r\nDESCRIPTION:Pet sitting reminder\r\nEND:VALARM\r\n`;
+  }
+  const alarm =
+    alarmBlock(b.reminder1Amount ?? data.settings.reminder1Amount ?? 1, b.reminder1Unit || data.settings.reminder1Unit || 'days') +
+    alarmBlock(b.reminder2Amount ?? data.settings.reminder2Amount ?? 1, b.reminder2Unit || data.settings.reminder2Unit || 'hours');
+
+  const desc=[
+    `Client: ${client?.name||''}`,
+    `Pet: ${pet?.name||''}`,
+    `Service: ${b.service||''}`,
+    client?.address?`Address: ${client.address}`:'',
+    pet?.feeding?`Feeding: ${pet.feeding}`:'',
+    pet?.medication?`Medication: ${pet.medication}`:'',
+    b.notes?`Notes: ${b.notes}`:''
+  ].filter(Boolean).join('\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+
+  const ics=`BEGIN:VCALENDAR\r
+VERSION:2.0\r
+PRODID:-//Pet Sitter Manager//EN\r
+CALSCALE:GREGORIAN\r
+BEGIN:VEVENT\r
+UID:${b.id}@petsittermanager.local\r
+DTSTART:${icsDate(start)}\r
+DTEND:${icsDate(end)}\r
+SUMMARY:${(pet?.name||'Pet')} - ${b.service}\r
+DESCRIPTION:${desc}\r
+${client?.address?`LOCATION:${client.address.replace(/,/g,'\\,')}\r\n`:''}${alarm}END:VEVENT\r
+END:VCALENDAR`;
+
+  const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`${(pet?.name||'pet').replace(/[^\w-]+/g,'_')}_${b.date}.ics`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+function loadSettingsForm(){
+  const s=data.settings;
+  document.getElementById('setBusinessName').value=s.businessName||'';
+  document.getElementById('setOwnerName').value=s.ownerName||'';
+  document.getElementById('setBusinessEmail').value=s.businessEmail||'';
+  document.getElementById('setBusinessPhone').value=s.businessPhone||'';
+  document.getElementById('setReminder1Amount').value=Number(s.reminder1Amount ?? 1);
+  document.getElementById('setReminder1Unit').value=s.reminder1Unit||'days';
+  document.getElementById('setReminder2Amount').value=Number(s.reminder2Amount ?? 1);
+  document.getElementById('setReminder2Unit').value=s.reminder2Unit||'hours';
+  document.getElementById('setConfirmationTemplate').value=s.confirmationTemplate||'';
+  document.getElementById('setReminderTemplate').value=s.reminderTemplate||'';
+  document.getElementById('setReportTemplate').value=s.reportTemplate||'';
+}
+function saveSettings(){
+  data.settings.businessName=document.getElementById('setBusinessName').value.trim()||'Pet Sitter Client & Booking Manager';
+  data.settings.ownerName=document.getElementById('setOwnerName').value.trim();
+  data.settings.businessEmail=document.getElementById('setBusinessEmail').value.trim();
+  data.settings.businessPhone=document.getElementById('setBusinessPhone').value.trim();
+  data.settings.reminder1Amount=Number(document.getElementById('setReminder1Amount').value||0);
+  data.settings.reminder1Unit=document.getElementById('setReminder1Unit').value;
+  data.settings.reminder2Amount=Number(document.getElementById('setReminder2Amount').value||0);
+  data.settings.reminder2Unit=document.getElementById('setReminder2Unit').value;
+  data.settings.confirmationTemplate=document.getElementById('setConfirmationTemplate').value;
+  data.settings.reminderTemplate=document.getElementById('setReminderTemplate').value;
+  data.settings.reportTemplate=document.getElementById('setReportTemplate').value;
+  saveData(); alert('Settings saved.');
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`pet-sitter-manager-backup-${ymd(new Date())}.json`;
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const obj=JSON.parse(reader.result);
+      if(!obj.clients||!obj.bookings||!obj.settings) throw new Error('Invalid backup');
+      data=obj; saveData(); alert('Backup restored.');
+    }catch(err){ alert('That file does not look like a valid Pet Sitter Manager backup.'); }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+function clearAllData(){
+  if(!confirm('This will permanently clear all clients, pets, and bookings stored in this browser. Continue?')) return;
+  data=structuredClone(defaultData); saveData();
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+['clientModal','petModal','bookingModal','reportModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{ if(e.target.id===id) closeModal(id); });
+});
+
+renderAll();
+setImagePreview('petPhotoPreview','');
+setImagePreview('petModalPhotoPreview','');
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
