@@ -1,0 +1,300 @@
+      color:#17120a !important;
+      background:linear-gradient(135deg,#f6c75b,#e5a62f);
+      border:1px solid #d59724;
+      text-decoration:none;
+      font-weight:900;
+      box-shadow:0 7px 18px rgba(181,128,28,.18);
+    }
+    .payment-url { display:block; margin-top:9px; color:#5f52b8; font-size:10px; word-break:break-all; }
+
+    .document-workflow-box,
+    .payment-options-box {
+      grid-column: span 12;
+      margin-top: 4px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fbfcfd;
+    }
+    .document-workflow-box h3, .payment-options-box h3 { margin:0 0 10px; font-size:15px; }
+    .payment-methods-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .payment-method-card { padding:10px; border:1px solid #e3e8ef; border-radius:11px; background:white; }
+    .payment-method-card label { font-size:10px; }
+    .payment-method-card input { margin-top:5px; }
+    .payment-preview-list { display:grid; gap:9px; }
+    .payment-preview-method { padding:10px 12px; border:1px solid #eadfbf; border-radius:11px; background:white; }
+    .payment-preview-method strong { display:block; margin-bottom:5px; font-size:12px; }
+    .payment-preview-method .payment-detail { color:#5f6775; font-size:11px; word-break:break-word; white-space:pre-wrap; }
+    .payment-preview-method .payment-button { margin-top:2px; }
+    .document-status { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; background:#eef2f6; }
+    .document-status.paid { color:#17653f; background:#e6f5ed; }
+    .document-status.partial { color:#8b5a10; background:#fff3d8; }
+    .document-status.unpaid { color:#9e3434; background:#fdeaea; }
+    .send-contact { padding:12px 14px; border:1px solid var(--line); border-radius:13px; background:var(--soft); }
+    .send-contact strong,.send-contact small { display:block; }
+    .send-contact small { margin-top:3px; color:var(--muted); }
+    .send-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:14px; }
+    .rich-preview { margin-top:14px; padding:14px; border:1px solid var(--line); border-radius:14px; background:white; max-height:310px; overflow:auto; }
+    .send-instruction { margin-top:12px; padding:12px 14px; border:1px solid #ead9ae; border-radius:13px; background:#fff8e7; color:#5b4b25; font-size:12px; }
+    .payment-qr-grid { display:grid; grid-template-columns:260px minmax(0,1fr); gap:18px; align-items:start; }
+    .payment-qr-wrap { min-height:250px; display:grid; place-items:center; padding:10px; border:1px solid var(--line); border-radius:15px; background:white; }
+    .payment-qr-wrap canvas { max-width:100%; height:auto; image-rendering:pixelated; }
+    .payment-link-display { padding:11px; border:1px solid var(--line); border-radius:11px; background:#f7f5ff; word-break:break-all; font-size:12px; }
+    .modal-wide { width:min(760px, calc(100% - 28px)); }
+
+    @media (max-width: 1050px) {
+      .workspace { grid-template-columns: 1fr; }
+      .quote-preview-card { position: static; }
+      #quoteDocument { min-height: 0; }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell { width: min(100% - 16px, 1480px); margin-top: 8px; }
+      .topbar { align-items: flex-start; padding: 15px; }
+      .topbar, .brand { flex-direction: column; }
+      .brand { align-items: flex-start; gap: 8px; }
+      .brand-mark { width: 38px; height: 38px; flex-basis: 38px; }
+      .top-actions { justify-content: flex-start; }
+      .span-8, .span-7, .span-6, .span-5, .span-4, .span-3 { grid-column: span 12; }
+      .totals-strip { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .quote-head, .quote-party, .quote-bottom { grid-template-columns: 1fr; }
+      .quote-meta { text-align: left; }
+      #quoteDocument { margin: 8px; padding: 21px 17px; }
+      .signature-row { grid-template-columns: 1fr; }
+      .stripe-row, .payment-qr-grid, .payment-methods-grid { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      @page { size: letter; margin: .42in; }
+      body { background: white !important; }
+      body * { visibility: hidden !important; }
+      #quoteDocument,
+      #quoteDocument * { visibility: visible !important; }
+      #quoteDocument {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+      }
+      .quote-footer { margin-top: 14px; }
+      .signature-clear,
+      .signature-methods { display: none !important; }
+      .typed-signature {
+        color: #172033 !important;
+        opacity: 1 !important;
+      }
+    }
+  .language-switch { display:none !important; }
+  #quoteLanguage { display:none !important; }
+  .items-table th:nth-child(2), .items-table td:nth-child(2) {display:none !important;}
+  .edition-note {text-transform:uppercase}
+  .items-table th:nth-child(2), .items-table td:nth-child(2) {display:none !important;}
+  #notesEs, #termsEs, #uiSpanish {display:none !important;}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+<div class="brand">
+<div class="brand-mark">Q+</div>
+<div>
+<h1 data-i18n="appTitle">Estimate, Invoice &amp; Client Manager</h1>
+<div class="edition-note" style="font-size:12px;font-weight:800;letter-spacing:.09em;color:#06695d;margin:4px 0">ENGLISH-ONLY SIGNABLE HTML WORKFLOW PREVIEW · NOT FINAL</div>
+<p data-i18n="appSubtitle">Price the work. Protect the profit. Present it professionally.</p>
+</div>
+</div>
+<div class="top-actions">
+<div aria-label="Interface language" class="language-switch">
+<button class="active" id="uiEnglish" type="button">English</button>
+<button id="uiSpanish" type="button">Español</button>
+</div>
+<button class="btn btn-ghost" id="helpButton" type="button">? <span data-i18n="quickHelp">Quick help</span></button>
+</div>
+</header>
+<nav aria-label="Document actions" class="toolbar">
+<button class="btn btn-primary" id="printButton" type="button">▣ <span data-i18n="printPdf">Print / Save PDF</span></button>
+<button class="btn btn-secondary" id="saveButton" type="button">✓ <span data-i18n="saveQuote">Save quote</span></button>
+<button class="btn btn-secondary" id="newButton" title="Start a new document while keeping your business profile" type="button">＋ <span data-i18n="newQuote">New quote</span></button>
+<button class="btn btn-danger" id="clearAllButton" title="Clear current business, customer, service and payment information; saved documents are kept" type="button">✕ Clear all fields</button>
+<button class="btn btn-secondary" id="convertInvoiceButton" type="button">→ <span data-i18n="convertInvoice">Convert to invoice</span></button>
+<button class="btn btn-secondary" id="exportButton" type="button">⇩ <span data-i18n="backup">Export backup</span></button>
+<button class="btn btn-secondary" id="importButton" type="button">⇧ <span data-i18n="restore">Import backup</span></button>
+<input accept="application/json,.json" class="hidden" id="importFile" type="file"/>
+</nav>
+<main class="workspace">
+<section class="editor">
+<article class="card">
+<div class="card-header">
+<div>
+<h2 data-i18n="businessCustomer">Business &amp; customer</h2>
+<p data-i18n="businessCustomerHelp">Customize your brand once; it stays saved on this device.</p>
+</div>
+<button class="btn btn-secondary btn-small" id="settingsButton" type="button">⚙ <span data-i18n="settings">Settings</span></button>
+</div>
+<div class="card-body">
+<p class="section-label" data-i18n="yourBusiness">Your business</p>
+<div class="grid">
+<label class="span-6"><span data-i18n="businessName">Business name</span>
+<input autocomplete="organization" id="businessName" placeholder="Your Business Name"/>
+</label>
+<label class="span-3"><span data-i18n="phone">Phone</span>
+<input autocomplete="tel" id="businessPhone" placeholder="(555) 555-0123"/>
+</label>
+<label class="span-3"><span data-i18n="email">Email</span>
+<input autocomplete="email" id="businessEmail" placeholder="hello@example.com"/>
+</label>
+<label class="span-8"><span data-i18n="businessAddress">Business address</span>
+<input autocomplete="street-address" id="businessAddress" placeholder="City, State"/>
+</label>
+<div class="span-4">
+<label for="logoInput"><span data-i18n="logo">Logo (optional)</span>
+<input accept="image/png,image/jpeg,image/webp" id="logoInput" type="file"/>
+</label>
+<div class="logo-actions">
+<p class="field-note" data-i18n="logoHelp">PNG or JPG. A small file works best.</p>
+<button class="btn btn-danger btn-small hidden" data-i18n="removeLogo" id="removeLogoButton" type="button">Remove logo</button>
+</div>
+</div>
+</div>
+<div class="section-rule"></div>
+<p class="section-label" data-i18n="customerJob">Customer &amp; job</p>
+<div class="grid">
+<label class="span-6"><span data-i18n="customerName">Customer name</span>
+<input autocomplete="name" id="customerName" placeholder="Customer Name"/>
+</label>
+<label class="span-3"><span data-i18n="customerPhone">Customer phone</span>
+<input autocomplete="tel" id="customerPhone" placeholder="(555) 555-0198"/>
+</label>
+<label class="span-3"><span data-i18n="serviceDate">Service date</span>
+<input id="serviceDate" type="date"/>
+</label>
+<label class="span-6"><span data-i18n="serviceAddress">Service address</span>
+<input autocomplete="street-address" id="serviceAddress" placeholder="123 Customer Street, City, State"/>
+</label>
+<label class="span-3"><span data-i18n="customerEmail">Customer email</span>
+<input autocomplete="email" id="customerEmail" placeholder="customer@example.com" type="email"/>
+</label>
+<label class="span-3"><span data-i18n="quoteLanguage">Customer quote language</span>
+<select id="quoteLanguage">
+<option value="en">English</option>
+<option value="es">Español</option>
+<option value="both">English + Español</option>
+</select>
+</label>
+</div>
+</div>
+</article><article class="card"><div class="card-header"><div><h2>Estimate &amp; invoice</h2><p>Set the document dates and track payments after approval.</p></div></div><div class="card-body"><div class="document-workflow-box" style="width:100%;margin-top:0;box-sizing:border-box">
+<h3 data-i18n="documentWorkflow">Estimate / invoice workflow</h3>
+<div class="grid">
+<label class="span-3"><span data-i18n="documentType">Document type</span>
+<select id="documentType">
+<option data-i18n="estimateOption" value="estimate">Estimate</option>
+<option data-i18n="invoiceOption" value="invoice">Invoice</option>
+</select>
+</label>
+<label class="span-3"><span data-i18n="documentDate">Document date</span>
+<input id="documentDate" type="date"/>
+</label>
+<label class="span-3" id="dueDateField"><span data-i18n="dueDate">Invoice due date</span>
+<input id="dueDate" type="date"/>
+</label>
+<label class="span-3" id="invoiceStatusField"><span data-i18n="invoiceStatus">Invoice status</span>
+<select id="invoiceStatus">
+<option data-i18n="statusUnpaid" value="unpaid">Unpaid</option>
+<option data-i18n="statusPartial" value="partial">Partially paid</option>
+<option data-i18n="statusPaid" value="paid">Paid</option>
+</select>
+</label>
+<label class="span-3" id="amountPaidField"><span data-i18n="amountPaid">Amount paid</span>
+<input id="amountPaid" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-3" id="newPaymentAmountField"><span data-i18n="newPaymentAmount">New payment received</span>
+<input id="newPaymentAmount" min="0" placeholder="0.00" step="0.01" type="number" value="0"/>
+</label>
+<div class="span-6" id="recordPaymentAction" style="display:flex;align-items:end;gap:10px;flex-wrap:wrap">
+<button class="btn btn-primary" id="recordPaymentButton" type="button">✓ <span data-i18n="recordPaymentThank">Record payment + thank customer</span></button>
+<span class="field-note" data-i18n="recordPaymentHelp" style="margin:0">Adds this payment to the invoice and prepares the thank-you receipt email.</span>
+</div>
+</div>
+<p class="field-note" data-i18n="documentWorkflowHelp">Build the estimate first, then convert the same job to an invoice without retyping it.</p>
+</div><div class="section-rule" style="margin:18px 0 16px"></div><div class="subsection-header" style="margin-bottom:12px"><h2 style="margin:0 0 4px;font-size:19px">Customer approval &amp; signature</h2><p style="margin:0;color:var(--muted);font-size:13px">Send the signable estimate, then import the signed copy to create an invoice.</p></div><div class="document-workflow-box" id="remoteSignatureWorkflow" style="grid-column:1/-1;border:2px solid #087f73;margin-top:0;width:100%;box-sizing:border-box">
+<h3 data-i18n="remoteSignatureTitle">Customer signature → invoice (signable HTML)</h3>
+<p class="field-note" data-i18n="remoteSignatureHelp">1. Save/download a customer-only signable estimate. 2. Email that file to your customer. 3. They sign and return the signed file by email. 4. Import it here to check against your saved estimate, create an invoice draft and prepare the invoice email. You must attach and send emails yourself.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+<button class="btn btn-secondary" data-i18n="downloadSignableEstimate" id="downloadSignableEstimate" type="button">Download signable estimate</button>
+<button class="btn btn-primary" data-i18n="importSignedApproval" id="importSignedApproval" type="button">Import signed HTML → create invoice</button>
+<input accept=".html,text/html" hidden="" id="signedApprovalFile" type="file"/>
+</div>
+<p class="field-note" data-i18n="remoteSignatureWarning">Email attachments do not send themselves. This is a local signature-and-return workflow, not a verified e-signature or automatic email service.</p>
+</div></div></article>
+<article class="card">
+<div class="card-header">
+<div>
+<h2 data-i18n="servicesPricing">Services &amp; customer price</h2>
+<p data-i18n="servicesPricingHelp">Add the services or products you want to include for this customer.</p>
+</div>
+</div>
+<div class="card-body">
+<div class="items-wrap">
+<table class="items-table">
+<thead>
+<tr>
+<th data-i18n="descriptionEnglish" style="width:57%">Service or product description</th>
+<th data-i18n="descriptionSpanish" style="width:29%">Description (Español)</th>
+<th data-i18n="quantity" style="width:10%">Qty</th>
+<th data-i18n="rate" style="width:13%">Rate</th>
+<th data-i18n="amount" style="width:13%">Amount</th>
+<th style="width:6%"></th>
+</tr>
+</thead>
+<tbody id="itemsBody"></tbody>
+</table>
+</div>
+<button class="btn btn-secondary btn-small" id="addItemButton" style="margin-top:10px" type="button">＋ <span data-i18n="addService">Add service</span></button>
+<div class="section-rule"></div>
+<div class="grid">
+<label class="span-3"><span data-i18n="discount">Discount</span>
+<input id="discount" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-3"><span data-i18n="taxRate">Sales tax %</span>
+<input id="taxRate" max="100" min="0" step="0.01" type="number" value="0"/>
+<p class="field-note" data-i18n="taxHelp">Use only when tax applies to this service.</p>
+</label>
+<label class="span-3"><span data-i18n="deposit">Deposit requested</span>
+<input id="deposit" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-3"><span data-i18n="validDays">Quote valid (days)</span>
+<input id="validDays" max="365" min="1" step="1" type="number" value="14"/>
+</label>
+</div>
+<div class="totals-strip">
+<div class="mini-total"><span data-i18n="subtotal">Subtotal</span><strong id="subtotalValue">$0.00</strong></div>
+<div class="mini-total"><span data-i18n="discount">Discount</span><strong id="discountValue">−$0.00</strong></div>
+<div class="mini-total"><span data-i18n="tax">Tax</span><strong id="taxValue">$0.00</strong></div>
+<div class="mini-total grand"><span data-i18n="quoteTotal">Quote total</span><strong id="grandTotalValue">$0.00</strong></div>
+</div>
+</div>
+</article><article class="card">
+<div class="card-header">
+<div>
+<h2 data-i18n="customerNotesTerms">Customer notes &amp; terms</h2>
+<p data-i18n="customerNotesTermsHelp">Add customer-facing scope, exclusions, scheduling details, and approval terms. These appear on the estimate, signed copy, and invoice.</p>
+</div>
+</div>
+<div class="card-body">
+<div class="grid">
+<label class="span-6"><span data-i18n="notesEnglish">Notes (English)</span>
+<textarea id="notesEn" placeholder="Thank you for the opportunity to provide this estimate."></textarea>
+</label>
+<label class="span-6"><span data-i18n="notesSpanish">Notas (Español)</span>
+<textarea id="notesEs" placeholder="Gracias por la oportunidad de preparar este estimado."></textarea>
+</label>
