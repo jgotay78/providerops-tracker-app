@@ -1,0 +1,19 @@
+{
+  "name": "Pet Sitter Client & Booking Manager",
+  "short_name": "Pet Sitter",
+  "description": "Pet sitting client, booking, calendar and reminder manager.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f6f2",
+  "theme_color": "#355c4d",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
