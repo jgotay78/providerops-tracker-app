@@ -1,0 +1,17 @@
+        } catch {
+          state.items = [];
+          addItem();
+          state.quoteNumber = makeQuoteNumber();
+          applyLanguage("en");
+        }
+        renderItems();
+        calculateAndRender();
+        renderHistory(); renderContactLog(); renderContactQueue();
+        requestAnimationFrame(resizeSignatureCanvas);
+      }
+
+      initialize();
+    })();
+  </script>
+</body>
+</html>
