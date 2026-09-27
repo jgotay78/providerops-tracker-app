@@ -1,0 +1,300 @@
+<label class="span-6"><span data-i18n="termsEnglish">Terms (English)</span>
+<textarea id="termsEn">Pricing may change if the scope or site conditions differ from the information provided. Additional work requires customer approval.</textarea>
+</label>
+<label class="span-6"><span data-i18n="termsSpanish">Términos (Español)</span>
+<textarea id="termsEs">El precio puede cambiar si el alcance o las condiciones del lugar difieren de la información proporcionada. El trabajo adicional requiere la aprobación del cliente.</textarea>
+</label>
+</div>
+<div class="privacy-note">
+<strong data-i18n="localOnlyLabel">Local-only:</strong>
+<span data-i18n="privacyText">Your data stays in this browser. Avoid entering Social Security numbers, card numbers, or other highly sensitive information.</span>
+</div>
+</div>
+</article>
+<article class="card"><div class="card-body"><div class="payment-options-box" style="width:100%;margin-top:0;box-sizing:border-box">
+<h3 data-i18n="singlePaymentTitle">One payment link</h3>
+<label class="check-line"><input checked="" id="includePaymentLink" type="checkbox"/> <span data-i18n="singlePaymentShow">Show Pay Now on the invoice and include it in customer messages.</span></label>
+<div class="grid">
+<label class="span-8"><span data-i18n="singlePaymentLink">Your business checkout URL (HTTPS)</span>
+<input id="paymentLink" inputmode="url" placeholder="https://paypal.me/yourname (or paste paypal.me/yourname)" type="url"/>
+</label>
+<div class="span-4" style="display:flex;align-items:end">
+<button class="btn btn-secondary" data-i18n="openPaymentPage" id="openPrimaryPaymentButton" type="button">Open payment page</button>
+</div>
+<label class="span-12"><span data-i18n="optionalPaymentNote">Optional payment instructions (not another link)</span>
+<textarea id="paymentInstructions" placeholder="Optional: payment reference or instructions" rows="2"></textarea>
+</label>
+</div>
+<p class="field-note" data-i18n="singlePaymentHelp">The customer clicks one Pay Now link and uses the methods supported by that checkout service. This offline file does not collect money or send messages automatically.</p>
+<div class="stripe-status" data-i18n="paymentMissing" id="paymentStatus">No payment link added yet.</div>
+<div aria-hidden="true" hidden=""> <div class="payment-methods-grid">
+<div class="payment-method-card"><label><span data-i18n="stripePaymentLink">Stripe link</span><input id="stripePaymentLink" inputmode="url" placeholder="https://buy.stripe.com/... or Stripe invoice URL" type="text"/></label></div>
+<div class="payment-method-card"><label><span data-i18n="paypalPayment">PayPal link or username</span><input id="paypalPayment" placeholder="https://paypal.me/yourname or @username" type="text"/></label></div>
+<div class="payment-method-card"><label><span data-i18n="venmoPayment">Venmo link or username</span><input id="venmoPayment" placeholder="https://venmo.com/u/yourname or @username" type="text"/></label></div>
+<div class="payment-method-card"><label><span data-i18n="zellePayment">Zelle / Chase payment details</span><input id="zellePayment" placeholder="Email, phone, or payment instructions" type="text"/></label></div>
+<div class="payment-method-card"><label><span data-i18n="cashAppPayment">Cash App link or $cashtag</span><input id="cashAppPayment" placeholder="https://cash.app/$yourname or $yourname" type="text"/></label></div>
+<div class="payment-method-card">
+<label><span data-i18n="otherPaymentLabel">Other method name</span><input id="otherPaymentLabel" placeholder="Bank transfer, ACH, check..." type="text"/></label>
+<label style="margin-top:8px"><span data-i18n="otherPaymentDetails">Other link or instructions</span><input id="otherPayment" placeholder="Secure link or payment instructions" type="text"/></label>
+</div>
+</div>
+<div class="grid" style="margin-top:10px">
+<label class="span-6"><span data-i18n="primaryPaymentMethod">QR / primary payment method</span>
+<select id="primaryPaymentMethod">
+<option data-i18n="paymentAuto" value="auto">Automatic — first clickable link</option>
+<option value="stripe">Stripe</option>
+<option value="paypal">PayPal</option>
+<option value="venmo">Venmo</option>
+<option value="cashapp">Cash App</option>
+<option data-i18n="otherPaymentOption" value="other">Other</option>
+</select>
+</label>
+<div class="span-6" style="display:flex;align-items:end;gap:8px">
+<!-- Legacy payment chooser removed. The single visible payment link button is above. -->
+</div>
+</div>
+</div>
+</div></div></article><article class="card" id="contactCard">
+<div class="card-header"><div><h2 data-i18n="contactTitle">Contact &amp; follow up with this customer</h2>
+<p data-i18n="contactHelp">Uses the customer and invoice above. Open Email, Text, or WhatsApp and press Send yourself.</p></div></div>
+<div class="card-body">
+<div class="grid">
+<label class="span-6"><span data-i18n="contactSituation">Reason for contacting</span>
+<select id="contactSituation">
+<option value="inquiry">New inquiry</option>
+<option value="estimate">Estimate follow-up</option>
+<option value="approval">Estimate approval</option>
+<option value="schedule">Confirm appointment</option>
+<option value="invoice">Invoice reminder</option>
+<option value="due">Payment due soon</option>
+<option value="overdue">Overdue balance</option>
+<option value="received">Thank you for payment</option>
+<option value="completed">Job completed</option>
+<option value="review">Request feedback</option>
+<option value="other">Custom message</option>
+</select>
+</label>
+<label class="span-3"><span data-i18n="contactTone">Tone</span><select id="contactTone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="firm">Firm</option></select></label>
+<label class="span-3"><span data-i18n="contactNext">Next follow-up date</span><input id="contactNext" type="date"/></label>
+<label class="span-12"><span data-i18n="contactSubject">Email subject</span><input id="contactSubject" maxlength="200"/></label>
+<label class="span-12"><span data-i18n="contactMessage">Customer message — editable</span><textarea id="contactMessage" placeholder="Generate a message or write your own." rows="9"></textarea></label>
+</div>
+<div class="top-actions" style="justify-content:flex-start;margin-top:12px;gap:8px;flex-wrap:wrap">
+<button class="btn btn-secondary btn-small" data-i18n="contactPrepare" id="contactGenerate" type="button">Generate message</button>
+<button class="btn btn-secondary btn-small" data-i18n="contactEmail" id="contactEmail" type="button">Open email</button>
+<button class="btn btn-secondary btn-small" data-i18n="contactText" id="contactText" type="button">Open text</button>
+<button class="btn btn-secondary btn-small" data-i18n="contactWhatsApp" id="contactWhatsApp" type="button">Open WhatsApp</button>
+<button class="btn btn-secondary btn-small" data-i18n="contactCopy" id="contactCopy" type="button">Copy message</button>
+<button class="btn btn-primary btn-small" data-i18n="contactMark" id="contactMark" type="button">Mark as sent</button>
+</div>
+<p class="field-note" data-i18n="contactDisclaimer">Opening an app does not send the message. Verify the recipient and press Send, then mark it sent here. Dates are in-app reminders only.</p>
+<label><span data-i18n="contactNotes">Internal customer notes (never shown to customer)</span><textarea id="contactNotes" placeholder="Private notes for this job" rows="2"></textarea></label>
+<div class="section-rule"></div><p class="section-label" data-i18n="contactLog">Contact history for this document</p><div class="history-list" id="contactLog"></div>
+<div class="section-rule"></div><p class="section-label" data-i18n="contactQueue">Saved-document follow-up queue</p><div class="history-list" id="contactQueue"></div>
+</div>
+</article><article class="card">
+<div class="card-header">
+<div>
+<h2 data-i18n="realJobCosts">Your real job costs</h2>
+<p data-i18n="realJobCostsHelp">These numbers are private and never appear on the customer quote.</p>
+</div>
+</div>
+<div class="card-body">
+<div class="grid">
+<label class="span-3"><span data-i18n="workers">Workers</span>
+<input id="workers" min="0" step="1" type="number" value="1"/>
+</label>
+<label class="span-3"><span data-i18n="hoursEach">Hours each</span>
+<input id="hoursEach" min="0" step="0.25" type="number" value="0"/>
+</label>
+<label class="span-3"><span data-i18n="laborCostHour">Labor cost / hour</span>
+<input id="laborRate" min="0" step="0.01" type="number" value="0"/>
+<p class="field-note" data-i18n="laborHelp">Include your own pay if you perform the work.</p>
+</label>
+<label class="span-3"><span data-i18n="materials">Materials &amp; supplies</span>
+<input id="materialsCost" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-3"><span data-i18n="roundTripMiles">Round-trip miles</span>
+<input id="miles" min="0" step="0.1" type="number" value="0"/>
+</label>
+<label class="span-3"><span data-i18n="vehicleCostMile">Vehicle cost / mile</span>
+<input id="mileCost" min="0" step="0.01" type="number" value="0.70"/>
+<p class="field-note" data-i18n="vehicleHelp">Your operating-cost estimate—not a tax deduction rate.</p>
+</label>
+<label class="span-3"><span data-i18n="otherCosts">Other job costs</span>
+<input id="otherCost" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-3"><span data-i18n="overhead">Overhead allocation</span>
+<input id="overheadCost" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-4"><span data-i18n="processingFee">Payment processing %</span>
+<input id="processingRate" max="25" min="0" step="0.01" type="number" value="0"/>
+</label>
+<label class="span-4"><span data-i18n="targetMargin">Target profit margin %</span>
+<input id="targetMargin" max="90" min="0" step="1" type="number" value="25"/>
+</label>
+<label class="span-4"><span data-i18n="internalNotes">Private notes</span>
+<input id="internalNotes" placeholder="Parking, helper, special equipment…"/>
+</label>
+</div>
+</div>
+</article></section>
+<aside class="preview-column">
+<article class="card">
+<div class="profit-panel">
+<div class="profit-top">
+<div>
+<h2 data-i18n="profitCheck">Private profit check</h2>
+<p data-i18n="profitCheckHelp">What remains after estimated job costs and card fees.</p>
+</div>
+<span class="health-pill" id="healthPill">Waiting for price</span>
+</div>
+<div class="profit-grid">
+<div class="profit-metric primary" id="profitMetric">
+<span data-i18n="estimatedProfit">Estimated profit</span>
+<strong id="profitValue">$0.00</strong>
+</div>
+<div class="profit-metric">
+<span data-i18n="profitMargin">Profit margin</span>
+<strong id="marginValue">0%</strong>
+</div>
+<div class="profit-metric">
+<span data-i18n="totalJobCosts">Total job costs</span>
+<strong id="jobCostsValue">$0.00</strong>
+</div>
+<div class="profit-metric">
+<span data-i18n="effectiveHour">Profit / labor hour</span>
+<strong id="effectiveHourValue">$0.00</strong>
+</div>
+<div class="profit-metric">
+<span data-i18n="recommendedMinimum">Target-margin price</span>
+<strong id="recommendedValue">$0.00</strong>
+</div>
+</div>
+<div class="recommendation" id="recommendationText">Add services and job costs to check the price.</div>
+</div>
+</article>
+<article class="card quote-preview-card">
+<div class="card-header">
+<div>
+<h2 data-i18n="customerPreview">Customer document preview</h2>
+<p data-i18n="customerPreviewHelp">Only this page prints or saves as PDF.</p>
+</div>
+<div class="preview-tools">
+<button class="btn btn-secondary btn-small" id="sendEstimateButton" type="button">✉ <span id="sendDocumentButtonText">Prepare customer document + email</span></button>
+<button class="btn btn-secondary btn-small" disabled="" id="paymentReceiptButton" type="button">♥ <span data-i18n="paymentThankYou">Payment thank-you</span></button>
+<button class="btn btn-secondary btn-small hidden" id="saveInvoicePdfButton" type="button">▣ Save invoice as PDF</button>
+<button class="btn btn-secondary btn-small" id="paymentQrButton" type="button">▦ <span data-i18n="paymentQr">Payment QR</span></button>
+<button class="btn btn-primary btn-small" id="printPreviewButton" type="button"><span data-i18n="printPdf">Print / Save PDF</span></button>
+</div>
+</div>
+<div id="quoteDocument">
+<div class="quote-head">
+<div class="quote-business">
+<img alt="Business logo" class="quote-logo" id="quoteLogo"/>
+<h2 id="previewBusinessName">Your Business Name</h2>
+<p id="previewBusinessAddress">City, State</p>
+<p><span id="previewBusinessPhone"></span><span id="previewBusinessSeparator"></span><span id="previewBusinessEmail"></span></p>
+</div>
+<div class="quote-meta">
+<h1 id="previewTitle">Estimate</h1>
+<p><strong id="previewQuoteLabel">Quote #:</strong> <span id="previewQuoteNumber"></span></p>
+<p><strong id="previewDateLabel">Date:</strong> <span id="previewCreatedDate"></span></p>
+<p><strong id="previewValidLabel">Valid until:</strong> <span id="previewValidDate"></span></p>
+<p class="hidden" id="previewStatusRow"><strong id="previewStatusLabel">Status:</strong> <span class="document-status unpaid" id="previewStatusValue">Unpaid</span></p>
+</div>
+</div>
+<div class="quote-party">
+<div>
+<h3 id="previewPreparedForLabel">Prepared for</h3>
+<p><strong id="previewCustomerName">Customer Name</strong></p>
+<p id="previewServiceAddress">Service address</p>
+<p id="previewCustomerPhone"></p>
+<p id="previewCustomerEmail"></p>
+</div>
+<div>
+<h3 id="previewJobLabel">Job details</h3>
+<p><strong id="previewServiceDateLabel">Service date:</strong> <span id="previewServiceDate">To be scheduled</span></p>
+<p id="previewEstimateOnly">This is an estimate, not an invoice.</p>
+</div>
+</div>
+<table class="preview-table">
+<thead>
+<tr>
+<th id="previewDescriptionLabel">Description</th>
+<th id="previewQtyLabel">Qty</th>
+<th id="previewRateLabel">Rate</th>
+<th id="previewAmountLabel">Amount</th>
+</tr>
+</thead>
+<tbody id="previewItems"></tbody>
+</table>
+<div class="quote-bottom">
+<div class="quote-notes">
+<h3 id="previewNotesLabel">Notes &amp; terms</h3>
+<p id="previewNotesTerms"></p>
+</div>
+<div class="quote-totals">
+<div><span id="previewSubtotalLabel">Subtotal</span><strong id="previewSubtotal">$0.00</strong></div>
+<div id="previewDiscountRow"><span id="previewDiscountLabel">Discount</span><strong id="previewDiscount">−$0.00</strong></div>
+<div id="previewTaxRow"><span id="previewTaxLabel">Tax</span><strong id="previewTax">$0.00</strong></div>
+<div class="total-due"><span id="previewTotalLabel">Total</span><strong id="previewTotal">$0.00</strong></div>
+<div id="previewDepositRow"><span id="previewDepositLabel">Deposit requested</span><strong id="previewDeposit">$0.00</strong></div>
+<div id="previewBalanceRow"><span id="previewBalanceLabel">Remaining balance</span><strong id="previewBalance">$0.00</strong></div>
+</div>
+</div>
+<div class="payment-preview hidden" id="previewPaymentBlock">
+<p id="previewPaymentLabel">Payment options</p>
+<div class="payment-preview-list" id="previewPaymentMethods"></div>
+</div>
+<div class="signature-row">
+<div class="signature-field">
+<div class="signature-methods">
+<button class="signature-method active" data-i18n="drawSignature" id="drawSignatureMode" type="button">Draw</button>
+<button class="signature-method" data-i18n="typeSignature" id="typeSignatureMode" type="button">Type</button>
+</div>
+<canvas aria-label="Customer signature area" class="signature-canvas" id="signatureCanvas"></canvas>
+<input autocomplete="name" class="typed-signature hidden" id="typedSignatureInput" maxlength="80" placeholder="Type full name"/>
+<div class="signature-caption">
+<div class="signature-line" id="previewSignatureLabel">Customer approval / signature</div>
+<button class="signature-clear" data-i18n="clearSignature" id="clearSignatureButton" type="button">Clear signature</button>
+</div>
+</div>
+<div>
+<div class="signature-date-value" id="previewSignedDate"></div>
+<div class="signature-line" id="previewSignatureDateLabel">Date</div>
+</div>
+</div>
+<div class="quote-footer" id="previewFooter">Thank you for the opportunity to earn your business.</div>
+</div>
+</article>
+<article class="card">
+<div class="card-header">
+<div>
+<h2 data-i18n="savedQuotes">Saved documents</h2>
+<p data-i18n="savedQuotesHelp">Estimates and invoices stored only in this browser until you export a backup.</p>
+</div>
+</div>
+<div class="card-body">
+<div class="history-list" id="historyList"></div>
+</div>
+</article>
+</aside>
+</main>
+</div>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<div aria-labelledby="helpTitle" aria-modal="true" class="modal-backdrop" id="helpModal" role="dialog">
+<div class="modal">
+<header>
+<div>
+<h2 data-i18n="helpTitle" id="helpTitle">Create a profitable estimate or invoice in five steps</h2>
+<p data-i18n="helpSubtitle">No spreadsheet, account, or internet connection needed.</p>
+</div>
+<button aria-label="Close" class="close-btn" data-close-modal="helpModal" type="button">×</button>
+</header>
+<div class="modal-body">
+<div class="help-steps">
+<div class="help-step"><h3 data-i18n="help1Title">Add your business and customer</h3><p data-i18n="help1Text">Your business details stay saved for the next document.</p></div>
+<div class="help-step"><h3 data-i18n="help2Title">Add your services</h3><p data-i18n="help2Text">Add only the services or products you actually offer and set the customer price.</p></div>
+<div class="help-step"><h3 data-i18n="help3Title">Enter the customer price</h3><p data-i18n="help3Text">Set quantities and rates for each line item.</p></div>
+<div class="help-step"><h3 data-i18n="help4Title">Enter your private costs</h3><p data-i18n="help4Text">Labor, travel, supplies, fees, and overhead never appear on the customer document.</p></div>
