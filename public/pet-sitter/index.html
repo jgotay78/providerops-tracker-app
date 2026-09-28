@@ -322,6 +322,12 @@
     .card{box-shadow:none}
   }
 </style>
+<style id="pet-booking-payment-layout">
+#bookingPaymentSummary{line-height:1.55}
+#bookingPaymentSummary strong{color:var(--accent)}
+#bookingSendPayment{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:480px){#bookingSendPayment{width:100%}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -953,11 +959,12 @@ function visitCard(b){
   return `<div class="visit">
     <div>
       <div class="visit-title">${esc(fmtTime(b.time))} • ${esc(pet?.name||'Pet')} — ${esc(b.service)}</div>
-      <div class="visit-meta">${esc(client?.name||'Unknown client')} • ${esc(b.status)}${b.price?` • $${Number(b.price).toFixed(2)}`:''}</div>
+      <div class="visit-meta">${esc(client?.name||'Unknown client')} • ${esc(b.status)}${bookingMoney(b).total>0?` • Paid ${esc(formatMoney(bookingMoney(b).paid))} • Balance ${esc(formatMoney(bookingMoney(b).remaining))}`:''}</div>
     </div>
     <div class="visit-actions">
       <button class="btn mini" onclick="sendConfirmation('${b.id}')">Confirmation</button>
       <button class="btn mini soft" onclick="sendReminder('${b.id}')" title="Open a reminder email draft for this booking">✉ Send Reminder</button>
+      <button class="btn mini soft" onclick="sendPaymentRequest('${b.id}')" title="Email the optional deposit or remaining balance">💳 Request Payment</button>
       <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Add to Calendar</button>
       <button class="btn mini" onclick="openReportModal('${b.id}')">Visit Report</button>
     </div>
@@ -1049,11 +1056,12 @@ function renderBookings(){
     return `<tr>
       <td>${esc(fmtDate(b.date))}</td><td>${esc(fmtTime(b.time))}</td>
       <td><strong>${esc(client?.name||'')}</strong><br><span class="visit-meta">${esc(pet?.name||'')}</span></td>
-      <td>${esc(b.service)}</td><td><span class="pill">${esc(b.status)}</span></td>
+      <td>${esc(b.service)}${bookingMoney(b).total>0?`<div class="visit-meta">Paid ${esc(formatMoney(bookingMoney(b).paid))} · Balance ${esc(formatMoney(bookingMoney(b).remaining))}</div>`:''}</td><td><span class="pill">${esc(b.status)}</span></td>
       <td>
         <div class="visit-actions" style="justify-content:flex-start">
           <button class="btn mini" onclick="editBooking('${b.id}')">Edit</button>
           <button class="btn mini soft" onclick="sendReminder('${b.id}')" title="Open a reminder email draft for this booking">✉ Send Reminder</button>
+      <button class="btn mini soft" onclick="sendPaymentRequest('${b.id}')" title="Email the optional deposit or remaining balance">💳 Request Payment</button>
           <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Calendar</button>
           <button class="btn mini danger" onclick="deleteBooking('${b.id}')">Delete</button>
         </div>
