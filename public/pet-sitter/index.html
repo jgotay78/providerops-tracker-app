@@ -524,7 +524,7 @@
         <select id="petType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select>
       </div>
       <div><label>Breed</label><input id="petBreed"></div>
-      <div><label>Sex</label><select id="petSex"><option value="Unknown">Unknown</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
+      <div><label>Sex</label><select id="petSex"><option value="">Select sex</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
       <div><label>Spay / Neuter Status</label><select id="petFixStatus"><option value="Unknown">Unknown</option><option value="Spayed">Spayed (female)</option><option value="Neutered">Neutered (male)</option><option value="Not fixed">Not fixed</option></select></div>
       <div><label>Age</label><input id="petAge"></div>
       <div class="full">
@@ -565,7 +565,7 @@
       <div><label>Pet Name *</label><input id="petModalName"></div>
       <div><label>Pet Type</label><select id="petModalType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select></div>
       <div><label>Breed</label><input id="petModalBreed"></div>
-      <div><label>Sex</label><select id="petModalSex"><option value="Unknown">Unknown</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
+      <div><label>Sex</label><select id="petModalSex"><option value="">Select sex</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
       <div><label>Spay / Neuter Status</label><select id="petModalFixStatus"><option value="Unknown">Unknown</option><option value="Spayed">Spayed (female)</option><option value="Neutered">Neutered (male)</option><option value="Not fixed">Not fixed</option></select></div>
       <div><label>Age</label><input id="petModalAge"></div>
       <div class="full">
@@ -1031,7 +1031,7 @@ function openClientModal(){
   document.getElementById('clientModalTitle').textContent='Add Client';
   ['clientId','clientName','clientEmail','clientPhone','clientEmergency','clientAddress','clientNotes','petId','petName','petBreed','petAge','petFeeding','petMedication','petCareNotes','petVetName','petVetPhone','petVetEmail','petPhotoData'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('petType').value='Dog';
-  document.getElementById('petSex').value='Unknown';
+  document.getElementById('petSex').value='';
   document.getElementById('petFixStatus').value='Unknown';
   clearImageField('petPhotoData','petPhotoFile','petPhotoPreview');
   document.getElementById('clientModal').classList.add('show');
@@ -1051,7 +1051,7 @@ function editClient(id){
   document.getElementById('petName').value=p.name||'';
   document.getElementById('petType').value=p.type||'Dog';
   document.getElementById('petBreed').value=p.breed||'';
-  document.getElementById('petSex').value=p.sex||'Unknown';
+  document.getElementById('petSex').value=['Female','Male'].includes(p.sex)?p.sex:'';
   document.getElementById('petFixStatus').value=p.fixStatus||'Unknown';
   document.getElementById('petAge').value=p.age||'';
   document.getElementById('petFeeding').value=p.feeding||'';
@@ -1069,6 +1069,7 @@ function saveClient(){
   const email=document.getElementById('clientEmail').value.trim();
   const petName=document.getElementById('petName').value.trim();
   if(!name||!email||!petName){ alert('Please enter the client name, email, and pet name.'); return; }
+  if(!document.getElementById('petSex').value){ alert('Please select the pet\'s sex: Female or Male.'); return; }
   const id=document.getElementById('clientId').value;
   const petObj={
     id:document.getElementById('petId').value||uid('pet'),
@@ -1122,7 +1123,7 @@ function openPetModal(clientId,petId=''){
   document.getElementById('petModalName').value=p.name||'';
   document.getElementById('petModalType').value=p.type||'Dog';
   document.getElementById('petModalBreed').value=p.breed||'';
-  document.getElementById('petModalSex').value=p.sex||'Unknown';
+  document.getElementById('petModalSex').value=['Female','Male'].includes(p.sex)?p.sex:'';
   document.getElementById('petModalFixStatus').value=p.fixStatus||'Unknown';
   document.getElementById('petModalAge').value=p.age||'';
   document.getElementById('petModalFeeding').value=p.feeding||'';
@@ -1143,6 +1144,7 @@ function savePetFromModal(){
   const c=getClient(clientId); if(!c) return;
   const name=document.getElementById('petModalName').value.trim();
   if(!name){ alert('Please enter the pet name.'); return; }
+  if(!document.getElementById('petModalSex').value){ alert('Please select the pet\'s sex: Female or Male.'); return; }
   const p={
     id:petId||uid('pet'), name,
     type:document.getElementById('petModalType').value,
