@@ -859,6 +859,9 @@ function paymentDetailsForClient(b){
 }
 function replaceTemplate(t,b,extraNotes=''){
   const {client,pet}=getBookingContext(b);
+  const payment=bookingMoney(b);
+  const link=paymentLinkForBooking(b);
+  const payableLink=payment.total>0&&payment.remaining>0&&validPaymentLink(link)?link:'';
   const map={
     '{client}':client?.name||'',
     '{pet}':pet?.name||'',
@@ -867,7 +870,9 @@ function replaceTemplate(t,b,extraNotes=''){
     '{service}':b.service||'',
     '{business}':data.settings.businessName||'',
     '{sitter}':data.settings.ownerName||'',
-    '{notes}':extraNotes || b.notes || ''
+    '{notes}':extraNotes || b.notes || '',
+    '{paymentLink}':payableLink,
+    '{balance}':payment.total>0?formatMoney(payment.remaining):''
   };
   let out=t||'';
   Object.entries(map).forEach(([k,v])=>out=out.split(k).join(v));
@@ -1387,9 +1392,10 @@ function sendConfirmation(id){
   if(!client?.email?.trim()){alert('Please add the client email before sending a confirmation.');return;}
   const body=replaceTemplate(data.settings.confirmationTemplate,b);
   const payment=paymentDetailsForClient(b);
+  const link=paymentLinkForBooking(b);
+  const complete=payment&&!body.includes(link)?body+'\n\nPayment details\n'+payment:body;
   mailto(client.email.trim(),
-    `Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,
-    payment?body+'\n\nPayment details\n'+payment:body);
+    `Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,complete);
 }
 function sendReminder(id){
   const b=data.bookings.find(x=>x.id===id); if(!b)return;
@@ -1403,7 +1409,10 @@ function sendReminder(id){
     return;
   }
   const body=replaceTemplate(data.settings.reminderTemplate,b);
-  mailto(client.email.trim(),`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+  const payment=paymentDetailsForClient(b);
+  const link=paymentLinkForBooking(b);
+  const complete=payment&&!body.includes(link)?body+'\n\nPayment details\n'+payment:body;
+  mailto(client.email.trim(),`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,complete);
 }
 function sendReminderFromBookingModal(){
   const id=document.getElementById('bookingId').value;
@@ -1412,7 +1421,10 @@ function sendReminderFromBookingModal(){
   if(!b) return;
   const fields=[
     ['bookingClient','clientId'],['bookingPet','petId'],['bookingDate','date'],
-    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status']
+    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status'],
+    ['bookingPrice','price'],['bookingDepositRequested','depositRequested'],
+    ['bookingAmountPaid','amountPaid'],['bookingBalanceDueDate','balanceDueDate'],
+    ['bookingPaymentLink','paymentLink']
   ];
   const changed=fields.some(([elementId,field])=>
     document.getElementById(elementId).value!==String(b[field]||'')
