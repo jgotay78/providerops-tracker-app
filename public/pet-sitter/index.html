@@ -786,6 +786,52 @@ function getBookingContext(b){
   const c=getClient(b.clientId), p=getPet(c,b.petId);
   return {client:c, pet:p};
 }
+
+function toCents(value){
+  const n=Number(value||0);
+  return Number.isFinite(n)?Math.round(n*100):0;
+}
+function formatMoney(cents){ return '$'+(cents/100).toFixed(2); }
+function bookingMoney(b){
+  const total=Math.max(0,toCents(b.price));
+  const deposit=Math.min(total,Math.max(0,toCents(b.depositRequested)));
+  const paid=Math.min(total,Math.max(0,toCents(b.amountPaid)));
+  return {total,deposit,paid,remaining:Math.max(0,total-paid),depositDue:Math.max(0,deposit-paid)};
+}
+function validPaymentLink(link){
+  try {const u=new URL(link);return u.protocol==='https:'&&Boolean(u.hostname);}
+  catch{return false;}
+}
+function paymentLinkForBooking(b){
+  return String(b.paymentLink||data.settings.paymentLink||'').trim();
+}
+function renderBookingPaymentSummary(){
+  const m=bookingMoney({
+    price:document.getElementById('bookingPrice').value,
+    depositRequested:document.getElementById('bookingDepositRequested').value,
+    amountPaid:document.getElementById('bookingAmountPaid').value
+  });
+  const due=document.getElementById('bookingBalanceDueDate').value;
+  document.getElementById('bookingPaymentSummary').textContent=m.total
+    ?'Total: '+formatMoney(m.total)+' • Optional deposit: '+formatMoney(m.deposit)+
+     ' • Received: '+formatMoney(m.paid)+' • Remaining: '+formatMoney(m.remaining)+
+     ' • Balance due: '+(due?fmtDate(due):'By arrangement')
+    :'Enter a total price to calculate the deposit and balance.';
+}
+function paymentDetailsForClient(b){
+  const m=bookingMoney(b),link=paymentLinkForBooking(b);
+  if(!m.total||!m.remaining||!validPaymentLink(link))return '';
+  const details=[
+    'Booking total: '+formatMoney(m.total),
+    'Payments received: '+formatMoney(m.paid),
+    'Remaining balance: '+formatMoney(m.remaining)
+  ];
+  if(m.depositDue)details.push('Optional deposit: '+formatMoney(m.depositDue));
+  details.push('Balance due: '+(b.balanceDueDate?fmtDate(b.balanceDueDate):'By arrangement'));
+  details.push('Payment link: '+link);
+  details.push('Please check the checkout amount before paying. If it differs, reply to arrange the correct link.');
+  return details.join(String.fromCharCode(10));
+}
 function replaceTemplate(t,b,extraNotes=''){
   const {client,pet}=getBookingContext(b);
   const map={
