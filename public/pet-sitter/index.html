@@ -524,6 +524,8 @@
         <select id="petType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select>
       </div>
       <div><label>Breed</label><input id="petBreed"></div>
+      <div><label>Sex</label><select id="petSex"><option value="Unknown">Unknown</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
+      <div><label>Spay / Neuter Status</label><select id="petFixStatus"><option value="Unknown">Unknown</option><option value="Spayed">Spayed (female)</option><option value="Neutered">Neutered (male)</option><option value="Not fixed">Not fixed</option></select></div>
       <div><label>Age</label><input id="petAge"></div>
       <div class="full">
         <label>Pet Picture</label>
@@ -560,6 +562,8 @@
       <div><label>Pet Name *</label><input id="petModalName"></div>
       <div><label>Pet Type</label><select id="petModalType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select></div>
       <div><label>Breed</label><input id="petModalBreed"></div>
+      <div><label>Sex</label><select id="petModalSex"><option value="Unknown">Unknown</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
+      <div><label>Spay / Neuter Status</label><select id="petModalFixStatus"><option value="Unknown">Unknown</option><option value="Spayed">Spayed (female)</option><option value="Neutered">Neutered (male)</option><option value="Not fixed">Not fixed</option></select></div>
       <div><label>Age</label><input id="petModalAge"></div>
       <div class="full">
         <label>Pet Picture</label>
@@ -964,6 +968,7 @@ function renderClients(){
         </div>
       </div>
       <div class="pet-chips">${(c.pets||[]).map(p=>`<span class="pet-chip">🐾 ${esc(p.name)} · ${esc(p.type||'Pet')} <button title="Edit pet" onclick="event.stopPropagation();openPetModal('${c.id}','${p.id}')">✎</button></span>`).join('')}</div>
+      <div class="visit-meta" style="margin-top:8px">${(c.pets||[]).map(p=>`<div>${esc(p.name)}: ${[p.breed,p.sex&&p.sex!=='Unknown'?p.sex:'',p.fixStatus&&p.fixStatus!=='Unknown'?p.fixStatus:''].filter(Boolean).map(esc).join(' · ')||'Details not entered'}</div>`).join('')}</div>
       <div style="margin-top:10px"><button class="btn mini soft" onclick="openPetModal('${c.id}')">+ Add Pet</button></div>
       ${c.address?`<div class="visit-meta" style="margin-top:9px">${esc(c.address)}</div>`:''}
     </div>`).join(''):'<div class="empty" style="grid-column:1/-1">No clients yet. Add your first client and pet.</div>';
@@ -1020,6 +1025,8 @@ function openClientModal(){
   document.getElementById('clientModalTitle').textContent='Add Client';
   ['clientId','clientName','clientEmail','clientPhone','clientEmergency','clientAddress','clientNotes','petId','petName','petBreed','petAge','petFeeding','petMedication','petCareNotes','petVet','petPhotoData'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('petType').value='Dog';
+  document.getElementById('petSex').value='Unknown';
+  document.getElementById('petFixStatus').value='Unknown';
   clearImageField('petPhotoData','petPhotoFile','petPhotoPreview');
   document.getElementById('clientModal').classList.add('show');
 }
@@ -1038,6 +1045,8 @@ function editClient(id){
   document.getElementById('petName').value=p.name||'';
   document.getElementById('petType').value=p.type||'Dog';
   document.getElementById('petBreed').value=p.breed||'';
+  document.getElementById('petSex').value=p.sex||'Unknown';
+  document.getElementById('petFixStatus').value=p.fixStatus||'Unknown';
   document.getElementById('petAge').value=p.age||'';
   document.getElementById('petFeeding').value=p.feeding||'';
   document.getElementById('petMedication').value=p.medication||'';
@@ -1058,6 +1067,8 @@ function saveClient(){
     name:petName,
     type:document.getElementById('petType').value,
     breed:document.getElementById('petBreed').value.trim(),
+    sex:document.getElementById('petSex').value,
+    fixStatus:document.getElementById('petFixStatus').value,
     age:document.getElementById('petAge').value.trim(),
     photo:document.getElementById('petPhotoData').value || '',
     feeding:document.getElementById('petFeeding').value.trim(),
@@ -1101,6 +1112,8 @@ function openPetModal(clientId,petId=''){
   document.getElementById('petModalName').value=p.name||'';
   document.getElementById('petModalType').value=p.type||'Dog';
   document.getElementById('petModalBreed').value=p.breed||'';
+  document.getElementById('petModalSex').value=p.sex||'Unknown';
+  document.getElementById('petModalFixStatus').value=p.fixStatus||'Unknown';
   document.getElementById('petModalAge').value=p.age||'';
   document.getElementById('petModalFeeding').value=p.feeding||'';
   document.getElementById('petModalMedication').value=p.medication||'';
@@ -1122,6 +1135,8 @@ function savePetFromModal(){
     id:petId||uid('pet'), name,
     type:document.getElementById('petModalType').value,
     breed:document.getElementById('petModalBreed').value.trim(),
+    sex:document.getElementById('petModalSex').value,
+    fixStatus:document.getElementById('petModalFixStatus').value,
     age:document.getElementById('petModalAge').value.trim(),
     photo:document.getElementById('petModalPhotoData').value || '',
     feeding:document.getElementById('petModalFeeding').value.trim(),
