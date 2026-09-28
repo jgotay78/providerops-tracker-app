@@ -1,4 +1,4 @@
-const CACHE='pet-sitter-manager-v2';
+const CACHE='pet-sitter-manager-v3';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));
