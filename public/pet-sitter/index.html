@@ -322,6 +322,12 @@
     .card{box-shadow:none}
   }
 </style>
+<style id="pet-booking-payment-layout">
+#bookingPaymentSummary{line-height:1.55}
+#bookingPaymentSummary strong{color:var(--accent)}
+#bookingSendPayment{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:480px){#bookingSendPayment{width:100%}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -437,6 +443,9 @@
           <div><label>Your Name</label><input id="setOwnerName" placeholder="Your name"></div>
           <div><label>Business Email</label><input id="setBusinessEmail" type="email" placeholder="hello@example.com"></div>
           <div><label>Phone</label><input id="setBusinessPhone" placeholder="(555) 555-5555"></div>
+          <div class="full"><label>Default payment link (optional)</label><input id="setPaymentLink" type="url" inputmode="url" placeholder="https://your-checkout-link">
+            <div class="help" style="margin-top:6px">Use a secure checkout link that accepts the amount requested, or create a link for the exact amount in your payment provider. This app cannot change the checkout amount or verify payments.</div>
+          </div>
           <div><label>Default Reminder 1</label><input id="setReminder1Amount" type="number" min="0" value="1"></div>
           <div><label>Reminder 1 Unit</label>
             <select id="setReminder1Unit">
@@ -628,7 +637,7 @@
           <option>Cancelled</option>
         </select>
       </div>
-      <div><label>Price</label><input id="bookingPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div><label>Total booking price</label><input id="bookingPrice" type="number" min="0" step="0.01" placeholder="0.00" oninput="renderBookingPaymentSummary()"></div>
       <div><label>Duration (minutes)</label><input id="bookingDuration" type="number" min="10" step="5" value="30"></div>
       <div><label>Calendar Reminder 1</label><input id="bookingReminder1Amount" type="number" min="0" value="1"></div>
       <div><label>Reminder 1 Unit</label>
@@ -649,10 +658,20 @@
         </select>
       </div>
       <div class="full"><div class="help">Examples: 2 days before + 30 minutes before, or 1 week before + 2 hours before. Set either amount to <strong>0</strong> to turn that reminder off.</div></div>
+      <div class="full" style="padding-top:10px;border-top:1px solid var(--border)"><strong>Booking payments</strong></div>
+      <div><label>Optional deposit requested ($)</label><input id="bookingDepositRequested" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" oninput="renderBookingPaymentSummary()"></div>
+      <div><label>Total amount received ($)</label><input id="bookingAmountPaid" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" oninput="renderBookingPaymentSummary()"></div>
+      <div><label>Remaining balance due date (optional)</label><input id="bookingBalanceDueDate" type="date" oninput="renderBookingPaymentSummary()"></div>
+      <div><label>Payment request type</label><select id="bookingPaymentRequestType"><option value="next">Deposit first, then balance</option><option value="balance">Full unpaid balance</option></select></div>
+      <div class="full"><label>Payment link for this booking (optional)</label><input id="bookingPaymentLink" type="url" inputmode="url" placeholder="Leave blank to use the link in Business Settings">
+        <div class="help" style="margin-top:6px">The payment provider must accept the requested amount, or you must create an amount-specific payment link. Never enter card or bank account numbers here.</div>
+      </div>
+      <div class="full"><div id="bookingPaymentSummary" class="help" aria-live="polite">Enter a total price to calculate the deposit and balance.</div></div>
       <div class="full"><label>Visit Notes</label><textarea id="bookingNotes" placeholder="Gate code, feeding details, walk instructions, etc."></textarea></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn soft" id="bookingSendReminder" type="button" onclick="sendReminderFromBookingModal()" style="display:none" title="Open an email reminder draft for this saved booking">✉ Send Reminder</button>
+      <button class="btn soft" id="bookingSendPayment" type="button" onclick="sendPaymentRequestFromBookingModal()" style="display:none" title="Open an email asking for the optional deposit or remaining balance">💳 Send Payment Request</button>
       <button class="btn" onclick="closeModal('bookingModal')">Cancel</button>
       <button class="btn primary" onclick="saveBooking()">Save Booking</button>
     </div>
@@ -690,6 +709,7 @@ const defaultData = {
     ownerName: '',
     businessEmail: '',
     businessPhone: '',
+    paymentLink: '',
     reminder1Amount: 1,
     reminder1Unit: 'days',
     reminder2Amount: 1,
@@ -771,6 +791,52 @@ function getPet(client,petId){ return client?.pets?.find(p=>p.id===petId); }
 function getBookingContext(b){
   const c=getClient(b.clientId), p=getPet(c,b.petId);
   return {client:c, pet:p};
+}
+
+function toCents(value){
+  const n=Number(value||0);
+  return Number.isFinite(n)?Math.round(n*100):0;
+}
+function formatMoney(cents){ return '$'+(cents/100).toFixed(2); }
+function bookingMoney(b){
+  const total=Math.max(0,toCents(b.price));
+  const deposit=Math.min(total,Math.max(0,toCents(b.depositRequested)));
+  const paid=Math.min(total,Math.max(0,toCents(b.amountPaid)));
+  return {total,deposit,paid,remaining:Math.max(0,total-paid),depositDue:Math.max(0,deposit-paid)};
+}
+function validPaymentLink(link){
+  try {const u=new URL(link);return u.protocol==='https:'&&Boolean(u.hostname);}
+  catch{return false;}
+}
+function paymentLinkForBooking(b){
+  return String(b.paymentLink||data.settings.paymentLink||'').trim();
+}
+function renderBookingPaymentSummary(){
+  const m=bookingMoney({
+    price:document.getElementById('bookingPrice').value,
+    depositRequested:document.getElementById('bookingDepositRequested').value,
+    amountPaid:document.getElementById('bookingAmountPaid').value
+  });
+  const due=document.getElementById('bookingBalanceDueDate').value;
+  document.getElementById('bookingPaymentSummary').textContent=m.total
+    ?'Total: '+formatMoney(m.total)+' • Optional deposit: '+formatMoney(m.deposit)+
+     ' • Received: '+formatMoney(m.paid)+' • Remaining: '+formatMoney(m.remaining)+
+     ' • Balance due: '+(due?fmtDate(due):'By arrangement')
+    :'Enter a total price to calculate the deposit and balance.';
+}
+function paymentDetailsForClient(b){
+  const m=bookingMoney(b),link=paymentLinkForBooking(b);
+  if(!m.total||!m.remaining||!validPaymentLink(link))return '';
+  const details=[
+    'Booking total: '+formatMoney(m.total),
+    'Payments received: '+formatMoney(m.paid),
+    'Remaining balance: '+formatMoney(m.remaining)
+  ];
+  if(m.depositDue)details.push('Optional deposit: '+formatMoney(m.depositDue));
+  details.push('Balance due: '+(b.balanceDueDate?fmtDate(b.balanceDueDate):'By arrangement'));
+  details.push('Payment link: '+link);
+  details.push('Please check the checkout amount before paying. If it differs, reply to arrange the correct link.');
+  return details.join(String.fromCharCode(10));
 }
 function replaceTemplate(t,b,extraNotes=''){
   const {client,pet}=getBookingContext(b);
@@ -893,11 +959,12 @@ function visitCard(b){
   return `<div class="visit">
     <div>
       <div class="visit-title">${esc(fmtTime(b.time))} • ${esc(pet?.name||'Pet')} — ${esc(b.service)}</div>
-      <div class="visit-meta">${esc(client?.name||'Unknown client')} • ${esc(b.status)}${b.price?` • $${Number(b.price).toFixed(2)}`:''}</div>
+      <div class="visit-meta">${esc(client?.name||'Unknown client')} • ${esc(b.status)}${bookingMoney(b).total>0?` • Paid ${esc(formatMoney(bookingMoney(b).paid))} • Balance ${esc(formatMoney(bookingMoney(b).remaining))}`:''}</div>
     </div>
     <div class="visit-actions">
       <button class="btn mini" onclick="sendConfirmation('${b.id}')">Confirmation</button>
       <button class="btn mini soft" onclick="sendReminder('${b.id}')" title="Open a reminder email draft for this booking">✉ Send Reminder</button>
+      <button class="btn mini soft" onclick="sendPaymentRequest('${b.id}')" title="Email the optional deposit or remaining balance">💳 Request Payment</button>
       <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Add to Calendar</button>
       <button class="btn mini" onclick="openReportModal('${b.id}')">Visit Report</button>
     </div>
@@ -989,11 +1056,12 @@ function renderBookings(){
     return `<tr>
       <td>${esc(fmtDate(b.date))}</td><td>${esc(fmtTime(b.time))}</td>
       <td><strong>${esc(client?.name||'')}</strong><br><span class="visit-meta">${esc(pet?.name||'')}</span></td>
-      <td>${esc(b.service)}</td><td><span class="pill">${esc(b.status)}</span></td>
+      <td>${esc(b.service)}${bookingMoney(b).total>0?`<div class="visit-meta">Paid ${esc(formatMoney(bookingMoney(b).paid))} · Balance ${esc(formatMoney(bookingMoney(b).remaining))}</div>`:''}</td><td><span class="pill">${esc(b.status)}</span></td>
       <td>
         <div class="visit-actions" style="justify-content:flex-start">
           <button class="btn mini" onclick="editBooking('${b.id}')">Edit</button>
           <button class="btn mini soft" onclick="sendReminder('${b.id}')" title="Open a reminder email draft for this booking">✉ Send Reminder</button>
+      <button class="btn mini soft" onclick="sendPaymentRequest('${b.id}')" title="Email the optional deposit or remaining balance">💳 Request Payment</button>
           <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Calendar</button>
           <button class="btn mini danger" onclick="deleteBooking('${b.id}')">Delete</button>
         </div>
@@ -1179,12 +1247,19 @@ function openBookingModal(prefillDate=''){
   document.getElementById('bookingModalTitle').textContent='New Booking';
   document.getElementById('bookingId').value='';
   document.getElementById('bookingSendReminder').style.display='none';
+  document.getElementById('bookingSendPayment').style.display='none';
   populateClientSelect();
   document.getElementById('bookingDate').value=prefillDate||ymd(new Date());
   document.getElementById('bookingTime').value='09:00';
   document.getElementById('bookingService').value='Drop-In Visit';
   document.getElementById('bookingStatus').value='Scheduled';
   document.getElementById('bookingPrice').value='';
+  document.getElementById('bookingDepositRequested').value='';
+  document.getElementById('bookingAmountPaid').value='';
+  document.getElementById('bookingBalanceDueDate').value='';
+  document.getElementById('bookingPaymentLink').value='';
+  document.getElementById('bookingPaymentRequestType').value='next';
+  renderBookingPaymentSummary();
   document.getElementById('bookingDuration').value='30';
   document.getElementById('bookingReminder1Amount').value=Number(data.settings.reminder1Amount ?? 1);
   document.getElementById('bookingReminder1Unit').value=data.settings.reminder1Unit || 'days';
@@ -1217,6 +1292,10 @@ function saveBooking(){
     service:document.getElementById('bookingService').value,
     status:document.getElementById('bookingStatus').value,
     price:document.getElementById('bookingPrice').value,
+    depositRequested:document.getElementById('bookingDepositRequested').value,
+    amountPaid:document.getElementById('bookingAmountPaid').value,
+    balanceDueDate:document.getElementById('bookingBalanceDueDate').value,
+    paymentLink:document.getElementById('bookingPaymentLink').value.trim(),
     duration:document.getElementById('bookingDuration').value||30,
     reminder1Amount:Number(document.getElementById('bookingReminder1Amount').value||0),
     reminder1Unit:document.getElementById('bookingReminder1Unit').value,
@@ -1225,6 +1304,20 @@ function saveBooking(){
     notes:document.getElementById('bookingNotes').value.trim()
   };
   if(!obj.clientId||!obj.petId||!obj.date||!obj.time){ alert('Please complete client, pet, date, and time.'); return; }
+  const amounts=[obj.price,obj.depositRequested,obj.amountPaid].map(v=>v===''?0:Number(v));
+  if(amounts.some(v=>!Number.isFinite(v)||v<0)){
+    alert('Price, deposit and amount received must be valid nonnegative amounts.');return;
+  }
+  const [totalCents,depositCents,paidCents]=amounts.map(v=>Math.round(v*100));
+  if(depositCents>totalCents){
+    alert('The deposit cannot exceed the total booking price.');return;
+  }
+  if(paidCents>totalCents){
+    alert('The amount received cannot exceed the total booking price.');return;
+  }
+  if(obj.paymentLink&&!validPaymentLink(obj.paymentLink)){
+    alert('Please use a secure booking payment link that starts with https://.');return;
+  }
   if(id){
     const idx=data.bookings.findIndex(b=>b.id===id);
     if(idx>-1) data.bookings[idx]=obj;
@@ -1236,6 +1329,7 @@ function editBooking(id){
   document.getElementById('bookingModalTitle').textContent='Edit Booking';
   document.getElementById('bookingId').value=b.id;
   document.getElementById('bookingSendReminder').style.display='inline-block';
+  document.getElementById('bookingSendPayment').style.display='inline-block';
   populateClientSelect(b.clientId);
   populatePetSelect(b.petId);
   document.getElementById('bookingDate').value=b.date;
@@ -1243,6 +1337,12 @@ function editBooking(id){
   document.getElementById('bookingService').value=b.service;
   document.getElementById('bookingStatus').value=b.status;
   document.getElementById('bookingPrice').value=b.price||'';
+  document.getElementById('bookingDepositRequested').value=b.depositRequested||'';
+  document.getElementById('bookingAmountPaid').value=b.amountPaid||'';
+  document.getElementById('bookingBalanceDueDate').value=b.balanceDueDate||'';
+  document.getElementById('bookingPaymentLink').value=b.paymentLink||'';
+  document.getElementById('bookingPaymentRequestType').value='next';
+  renderBookingPaymentSummary();
   document.getElementById('bookingDuration').value=b.duration||30;
   document.getElementById('bookingReminder1Amount').value=Number(b.reminder1Amount ?? data.settings.reminder1Amount ?? 1);
   document.getElementById('bookingReminder1Unit').value=b.reminder1Unit || data.settings.reminder1Unit || 'days';
@@ -1257,10 +1357,14 @@ function deleteBooking(id){
 }
 
 function sendConfirmation(id){
-  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  const b=data.bookings.find(x=>x.id===id);if(!b)return;
   const {client,pet}=getBookingContext(b);
+  if(!client?.email?.trim()){alert('Please add the client email before sending a confirmation.');return;}
   const body=replaceTemplate(data.settings.confirmationTemplate,b);
-  mailto(client?.email,`Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+  const payment=paymentDetailsForClient(b);
+  mailto(client.email.trim(),
+    `Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,
+    payment?body+'\n\nPayment details\n'+payment:body);
 }
 function sendReminder(id){
   const b=data.bookings.find(x=>x.id===id); if(!b)return;
@@ -1293,6 +1397,60 @@ function sendReminderFromBookingModal(){
     return;
   }
   sendReminder(id);
+}
+
+function sendPaymentRequest(id,mode='next'){
+  const b=data.bookings.find(x=>x.id===id);if(!b)return;
+  if(b.status==='Cancelled'){
+    alert('This booking is cancelled. Update it before requesting payment.');return;
+  }
+  const {client,pet}=getBookingContext(b);
+  if(!client?.email?.trim()){
+    alert('Please add the client email before requesting payment.');return;
+  }
+  const m=bookingMoney(b);
+  if(!m.total){alert('Add a total booking price before requesting payment.');return;}
+  if(!m.remaining){alert('This booking is already marked paid in full.');return;}
+  const link=paymentLinkForBooking(b);
+  if(!validPaymentLink(link)){
+    alert('Add a secure HTTPS payment link to this booking or Business Settings first.');return;
+  }
+  const depositMode=mode!=='balance'&&m.depositDue>0;
+  const requested=depositMode?m.depositDue:m.remaining;
+  const type=depositMode?'optional deposit':'remaining balance';
+  const subject=(depositMode?'Optional deposit request':'Booking payment request')+
+    ' — '+(pet?.name||'Pet')+' — '+fmtDate(b.date);
+  const body=[
+    'Hi '+client.name+',','',
+    'Here are the payment details for '+(pet?.name||'your pet')+
+      "'s "+(b.service||'booking')+' on '+fmtDate(b.date)+' at '+fmtTime(b.time)+'.','',
+    'Total booking price: '+formatMoney(m.total),
+    'Payments already received: '+formatMoney(m.paid),
+    'Amount requested now ('+type+'): '+formatMoney(requested),
+    'Balance after this payment (if paid): '+formatMoney(Math.max(0,m.remaining-requested)),
+    'Balance due: '+(b.balanceDueDate?fmtDate(b.balanceDueDate):'By arrangement'),
+    '', 'Payment link: '+link,
+    'Please check that checkout shows the correct amount. If it differs, reply before paying.',
+    '', 'Thank you,',data.settings.ownerName||data.settings.businessName||'Your pet sitter'
+  ].join(String.fromCharCode(10));
+  mailto(client.email.trim(),subject,body);
+}
+function sendPaymentRequestFromBookingModal(){
+  const id=document.getElementById('bookingId').value;if(!id)return;
+  const b=data.bookings.find(x=>x.id===id);if(!b)return;
+  const fields=[
+    ['bookingClient','clientId'],['bookingPet','petId'],['bookingDate','date'],
+    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status'],
+    ['bookingPrice','price'],['bookingDepositRequested','depositRequested'],
+    ['bookingAmountPaid','amountPaid'],['bookingBalanceDueDate','balanceDueDate'],
+    ['bookingPaymentLink','paymentLink']
+  ];
+  if(fields.some(([fieldId,key])=>
+    document.getElementById(fieldId).value!==String(b[key]||''))){
+    alert('Save the booking changes before requesting payment so the amounts and link are current.');
+    return;
+  }
+  sendPaymentRequest(id,document.getElementById('bookingPaymentRequestType').value);
 }
 function openReportModal(id){
   document.getElementById('reportBookingId').value=id;
@@ -1381,6 +1539,7 @@ function loadSettingsForm(){
   document.getElementById('setOwnerName').value=s.ownerName||'';
   document.getElementById('setBusinessEmail').value=s.businessEmail||'';
   document.getElementById('setBusinessPhone').value=s.businessPhone||'';
+  document.getElementById('setPaymentLink').value=s.paymentLink||'';
   document.getElementById('setReminder1Amount').value=Number(s.reminder1Amount ?? 1);
   document.getElementById('setReminder1Unit').value=s.reminder1Unit||'days';
   document.getElementById('setReminder2Amount').value=Number(s.reminder2Amount ?? 1);
@@ -1390,10 +1549,15 @@ function loadSettingsForm(){
   document.getElementById('setReportTemplate').value=s.reportTemplate||'';
 }
 function saveSettings(){
+  const defaultLink=document.getElementById('setPaymentLink').value.trim();
+  if(defaultLink&&!validPaymentLink(defaultLink)){
+    alert('Please use a secure payment link that starts with https://.');return;
+  }
   data.settings.businessName=document.getElementById('setBusinessName').value.trim()||'Pet Sitter Client & Booking Manager';
   data.settings.ownerName=document.getElementById('setOwnerName').value.trim();
   data.settings.businessEmail=document.getElementById('setBusinessEmail').value.trim();
   data.settings.businessPhone=document.getElementById('setBusinessPhone').value.trim();
+  data.settings.paymentLink=document.getElementById('setPaymentLink').value.trim();
   data.settings.reminder1Amount=Number(document.getElementById('setReminder1Amount').value||0);
   data.settings.reminder1Unit=document.getElementById('setReminder1Unit').value;
   data.settings.reminder2Amount=Number(document.getElementById('setReminder2Amount').value||0);
