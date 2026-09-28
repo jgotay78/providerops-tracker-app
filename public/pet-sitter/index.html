@@ -874,7 +874,12 @@ function replaceTemplate(t,b,extraNotes=''){
   return out;
 }
 function mailto(email,subject,body){
-  const url=`mailto:${encodeURIComponent(email||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const business=(data.settings.businessName||'').trim();
+  let message=String(body||'');
+  if(business && business!=='Pet Sitter Client & Booking Manager' && !message.includes(business)){
+    message=message.trimEnd()+'\n\n'+business;
+  }
+  const url=`mailto:${encodeURIComponent(email||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
   window.location.href=url;
 }
 function setImagePreview(previewId, dataUrl=''){
@@ -957,6 +962,7 @@ function renderAll(){
   renderCalendar();
   loadSettingsForm();
   document.getElementById('brandName').textContent=data.settings.businessName||'Pet Sitter Client & Booking Manager';
+  renderBusinessLogo();
 }
 function renderStats(){
   const now=new Date();
@@ -1552,12 +1558,89 @@ END:VCALENDAR`;
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
 
+
+function validBusinessLogo(value){
+  return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(value||''));
+}
+function renderBusinessLogo(){
+  const image=document.getElementById('businessBrandIcon');
+  const paw=document.getElementById('defaultBrandPaw');
+  const container=document.querySelector('.brand-icon');
+  const value=data.settings.logoData||'';
+  if(validBusinessLogo(value)){
+    image.src=value;
+    image.style.display='block';
+    paw.style.display='none';
+    container.classList.add('with-logo');
+  } else {
+    image.removeAttribute('src');
+    image.style.display='none';
+    paw.style.display='block';
+    container.classList.remove('with-logo');
+  }
+}
+function updateBusinessLogoPreview(value){
+  const image=document.getElementById('setBusinessLogoPreview');
+  if(validBusinessLogo(value)){
+    image.src=value;
+    image.style.display='block';
+  } else {
+    image.removeAttribute('src');
+    image.style.display='none';
+  }
+}
+function clearBusinessLogo(){
+  document.getElementById('setBusinessLogoData').value='';
+  document.getElementById('setBusinessLogoFile').value='';
+  updateBusinessLogoPreview('');
+}
+function handleBusinessLogoUpload(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>4*1024*1024){
+    alert('Choose a PNG, JPG or WebP logo smaller than 4 MB.');
+    event.target.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onerror=()=>alert('The logo could not be read. Please try again.');
+  reader.onload=()=>{
+    const image=new Image();
+    image.onerror=()=>alert('The logo image could not be opened. Please use a different file.');
+    image.onload=()=>{
+      const factor=Math.min(1,320/Math.max(image.width,image.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(image.width*factor));
+      canvas.height=Math.max(1,Math.round(image.height*factor));
+      canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+      const value=canvas.toDataURL(file.type==='image/png'?'image/png':'image/jpeg',0.82);
+      if(value.length>350000){
+        alert('The compressed logo is too large. Try a smaller image.');
+        event.target.value='';
+        return;
+      }
+      document.getElementById('setBusinessLogoData').value=value;
+      updateBusinessLogoPreview(value);
+    };
+    image.src=String(reader.result||'');
+  };
+  reader.readAsDataURL(file);
+}
+function openBusinessSettings(){
+  const tab=document.querySelector('.tab[data-tab="settings"]');
+  if(!tab)return;
+  tab.click();
+  document.getElementById('settings').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function loadSettingsForm(){
   const s=data.settings;
   document.getElementById('setBusinessName').value=s.businessName||'';
   document.getElementById('setOwnerName').value=s.ownerName||'';
   document.getElementById('setBusinessEmail').value=s.businessEmail||'';
   document.getElementById('setBusinessPhone').value=s.businessPhone||'';
+  document.getElementById('setBusinessLogoData').value=s.logoData||'';
+  document.getElementById('setBusinessLogoFile').value='';
+  updateBusinessLogoPreview(s.logoData||'');
   document.getElementById('setPaymentLink').value=s.paymentLink||'';
   document.getElementById('setReminder1Amount').value=Number(s.reminder1Amount ?? 1);
   document.getElementById('setReminder1Unit').value=s.reminder1Unit||'days';
@@ -1576,6 +1659,7 @@ function saveSettings(){
   data.settings.ownerName=document.getElementById('setOwnerName').value.trim();
   data.settings.businessEmail=document.getElementById('setBusinessEmail').value.trim();
   data.settings.businessPhone=document.getElementById('setBusinessPhone').value.trim();
+  data.settings.logoData=validBusinessLogo(document.getElementById('setBusinessLogoData').value)?document.getElementById('setBusinessLogoData').value:'';
   data.settings.paymentLink=document.getElementById('setPaymentLink').value.trim();
   data.settings.reminder1Amount=Number(document.getElementById('setReminder1Amount').value||0);
   data.settings.reminder1Unit=document.getElementById('setReminder1Unit').value;
