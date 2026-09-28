@@ -437,6 +437,9 @@
           <div><label>Your Name</label><input id="setOwnerName" placeholder="Your name"></div>
           <div><label>Business Email</label><input id="setBusinessEmail" type="email" placeholder="hello@example.com"></div>
           <div><label>Phone</label><input id="setBusinessPhone" placeholder="(555) 555-5555"></div>
+          <div class="full"><label>Default payment link (optional)</label><input id="setPaymentLink" type="url" inputmode="url" placeholder="https://your-checkout-link">
+            <div class="help" style="margin-top:6px">Use a secure checkout link that accepts the amount requested, or create a link for the exact amount in your payment provider. This app cannot change the checkout amount or verify payments.</div>
+          </div>
           <div><label>Default Reminder 1</label><input id="setReminder1Amount" type="number" min="0" value="1"></div>
           <div><label>Reminder 1 Unit</label>
             <select id="setReminder1Unit">
@@ -628,7 +631,7 @@
           <option>Cancelled</option>
         </select>
       </div>
-      <div><label>Price</label><input id="bookingPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div><label>Total booking price</label><input id="bookingPrice" type="number" min="0" step="0.01" placeholder="0.00" oninput="renderBookingPaymentSummary()"></div>
       <div><label>Duration (minutes)</label><input id="bookingDuration" type="number" min="10" step="5" value="30"></div>
       <div><label>Calendar Reminder 1</label><input id="bookingReminder1Amount" type="number" min="0" value="1"></div>
       <div><label>Reminder 1 Unit</label>
@@ -649,10 +652,20 @@
         </select>
       </div>
       <div class="full"><div class="help">Examples: 2 days before + 30 minutes before, or 1 week before + 2 hours before. Set either amount to <strong>0</strong> to turn that reminder off.</div></div>
+      <div class="full" style="padding-top:10px;border-top:1px solid var(--border)"><strong>Booking payments</strong></div>
+      <div><label>Optional deposit requested ($)</label><input id="bookingDepositRequested" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" oninput="renderBookingPaymentSummary()"></div>
+      <div><label>Total amount received ($)</label><input id="bookingAmountPaid" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" oninput="renderBookingPaymentSummary()"></div>
+      <div><label>Remaining balance due date (optional)</label><input id="bookingBalanceDueDate" type="date" oninput="renderBookingPaymentSummary()"></div>
+      <div><label>Payment request type</label><select id="bookingPaymentRequestType"><option value="next">Deposit first, then balance</option><option value="balance">Full unpaid balance</option></select></div>
+      <div class="full"><label>Payment link for this booking (optional)</label><input id="bookingPaymentLink" type="url" inputmode="url" placeholder="Leave blank to use the link in Business Settings">
+        <div class="help" style="margin-top:6px">The payment provider must accept the requested amount, or you must create an amount-specific payment link. Never enter card or bank account numbers here.</div>
+      </div>
+      <div class="full"><div id="bookingPaymentSummary" class="help" aria-live="polite">Enter a total price to calculate the deposit and balance.</div></div>
       <div class="full"><label>Visit Notes</label><textarea id="bookingNotes" placeholder="Gate code, feeding details, walk instructions, etc."></textarea></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn soft" id="bookingSendReminder" type="button" onclick="sendReminderFromBookingModal()" style="display:none" title="Open an email reminder draft for this saved booking">✉ Send Reminder</button>
+      <button class="btn soft" id="bookingSendPayment" type="button" onclick="sendPaymentRequestFromBookingModal()" style="display:none" title="Open an email asking for the optional deposit or remaining balance">💳 Send Payment Request</button>
       <button class="btn" onclick="closeModal('bookingModal')">Cancel</button>
       <button class="btn primary" onclick="saveBooking()">Save Booking</button>
     </div>
@@ -690,6 +703,7 @@ const defaultData = {
     ownerName: '',
     businessEmail: '',
     businessPhone: '',
+    paymentLink: '',
     reminder1Amount: 1,
     reminder1Unit: 'days',
     reminder2Amount: 1,
@@ -1179,12 +1193,19 @@ function openBookingModal(prefillDate=''){
   document.getElementById('bookingModalTitle').textContent='New Booking';
   document.getElementById('bookingId').value='';
   document.getElementById('bookingSendReminder').style.display='none';
+  document.getElementById('bookingSendPayment').style.display='none';
   populateClientSelect();
   document.getElementById('bookingDate').value=prefillDate||ymd(new Date());
   document.getElementById('bookingTime').value='09:00';
   document.getElementById('bookingService').value='Drop-In Visit';
   document.getElementById('bookingStatus').value='Scheduled';
   document.getElementById('bookingPrice').value='';
+  document.getElementById('bookingDepositRequested').value='';
+  document.getElementById('bookingAmountPaid').value='';
+  document.getElementById('bookingBalanceDueDate').value='';
+  document.getElementById('bookingPaymentLink').value='';
+  document.getElementById('bookingPaymentRequestType').value='next';
+  renderBookingPaymentSummary();
   document.getElementById('bookingDuration').value='30';
   document.getElementById('bookingReminder1Amount').value=Number(data.settings.reminder1Amount ?? 1);
   document.getElementById('bookingReminder1Unit').value=data.settings.reminder1Unit || 'days';
@@ -1217,6 +1238,10 @@ function saveBooking(){
     service:document.getElementById('bookingService').value,
     status:document.getElementById('bookingStatus').value,
     price:document.getElementById('bookingPrice').value,
+    depositRequested:document.getElementById('bookingDepositRequested').value,
+    amountPaid:document.getElementById('bookingAmountPaid').value,
+    balanceDueDate:document.getElementById('bookingBalanceDueDate').value,
+    paymentLink:document.getElementById('bookingPaymentLink').value.trim(),
     duration:document.getElementById('bookingDuration').value||30,
     reminder1Amount:Number(document.getElementById('bookingReminder1Amount').value||0),
     reminder1Unit:document.getElementById('bookingReminder1Unit').value,
@@ -1236,6 +1261,7 @@ function editBooking(id){
   document.getElementById('bookingModalTitle').textContent='Edit Booking';
   document.getElementById('bookingId').value=b.id;
   document.getElementById('bookingSendReminder').style.display='inline-block';
+  document.getElementById('bookingSendPayment').style.display='inline-block';
   populateClientSelect(b.clientId);
   populatePetSelect(b.petId);
   document.getElementById('bookingDate').value=b.date;
@@ -1243,6 +1269,12 @@ function editBooking(id){
   document.getElementById('bookingService').value=b.service;
   document.getElementById('bookingStatus').value=b.status;
   document.getElementById('bookingPrice').value=b.price||'';
+  document.getElementById('bookingDepositRequested').value=b.depositRequested||'';
+  document.getElementById('bookingAmountPaid').value=b.amountPaid||'';
+  document.getElementById('bookingBalanceDueDate').value=b.balanceDueDate||'';
+  document.getElementById('bookingPaymentLink').value=b.paymentLink||'';
+  document.getElementById('bookingPaymentRequestType').value='next';
+  renderBookingPaymentSummary();
   document.getElementById('bookingDuration').value=b.duration||30;
   document.getElementById('bookingReminder1Amount').value=Number(b.reminder1Amount ?? data.settings.reminder1Amount ?? 1);
   document.getElementById('bookingReminder1Unit').value=b.reminder1Unit || data.settings.reminder1Unit || 'days';
@@ -1381,6 +1413,7 @@ function loadSettingsForm(){
   document.getElementById('setOwnerName').value=s.ownerName||'';
   document.getElementById('setBusinessEmail').value=s.businessEmail||'';
   document.getElementById('setBusinessPhone').value=s.businessPhone||'';
+  document.getElementById('setPaymentLink').value=s.paymentLink||'';
   document.getElementById('setReminder1Amount').value=Number(s.reminder1Amount ?? 1);
   document.getElementById('setReminder1Unit').value=s.reminder1Unit||'days';
   document.getElementById('setReminder2Amount').value=Number(s.reminder2Amount ?? 1);
@@ -1394,6 +1427,7 @@ function saveSettings(){
   data.settings.ownerName=document.getElementById('setOwnerName').value.trim();
   data.settings.businessEmail=document.getElementById('setBusinessEmail').value.trim();
   data.settings.businessPhone=document.getElementById('setBusinessPhone').value.trim();
+  data.settings.paymentLink=document.getElementById('setPaymentLink').value.trim();
   data.settings.reminder1Amount=Number(document.getElementById('setReminder1Amount').value||0);
   data.settings.reminder1Unit=document.getElementById('setReminder1Unit').value;
   data.settings.reminder2Amount=Number(document.getElementById('setReminder2Amount').value||0);
