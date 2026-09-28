@@ -540,7 +540,10 @@
       <div class="full"><label>Feeding Instructions</label><textarea id="petFeeding"></textarea></div>
       <div class="full"><label>Medication / Allergies</label><textarea id="petMedication"></textarea></div>
       <div class="full"><label>Behavior / Care Notes</label><textarea id="petCareNotes"></textarea></div>
-      <div class="full"><label>Veterinarian</label><input id="petVet" placeholder="Vet name / phone"></div>
+      <div class="full"><strong>Veterinarian contact</strong></div>
+      <div><label>Veterinarian name</label><input id="petVetName" autocomplete="off" placeholder="Veterinarian or clinic name"></div>
+      <div><label>Veterinarian phone</label><input id="petVetPhone" type="tel" inputmode="tel" placeholder="(555) 555-5555"></div>
+      <div class="full"><label>Veterinarian email</label><input id="petVetEmail" type="email" autocomplete="off" placeholder="vet@example.com"></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn" onclick="closeModal('clientModal')">Cancel</button>
@@ -578,7 +581,10 @@
       <div class="full"><label>Feeding Instructions</label><textarea id="petModalFeeding"></textarea></div>
       <div class="full"><label>Medication / Allergies</label><textarea id="petModalMedication"></textarea></div>
       <div class="full"><label>Behavior / Care Notes</label><textarea id="petModalCareNotes"></textarea></div>
-      <div class="full"><label>Veterinarian</label><input id="petModalVet" placeholder="Vet name / phone"></div>
+      <div class="full"><strong>Veterinarian contact</strong></div>
+      <div><label>Veterinarian name</label><input id="petModalVetName" autocomplete="off" placeholder="Veterinarian or clinic name"></div>
+      <div><label>Veterinarian phone</label><input id="petModalVetPhone" type="tel" inputmode="tel" placeholder="(555) 555-5555"></div>
+      <div class="full"><label>Veterinarian email</label><input id="petModalVetEmail" type="email" autocomplete="off" placeholder="vet@example.com"></div>
     </div>
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn danger" id="deletePetBtn" onclick="deletePetFromModal()" style="display:none">Delete Pet</button>
@@ -1023,7 +1029,7 @@ function changeMonth(delta){ currentCalendar=new Date(currentCalendar.getFullYea
 
 function openClientModal(){
   document.getElementById('clientModalTitle').textContent='Add Client';
-  ['clientId','clientName','clientEmail','clientPhone','clientEmergency','clientAddress','clientNotes','petId','petName','petBreed','petAge','petFeeding','petMedication','petCareNotes','petVet','petPhotoData'].forEach(id=>document.getElementById(id).value='');
+  ['clientId','clientName','clientEmail','clientPhone','clientEmergency','clientAddress','clientNotes','petId','petName','petBreed','petAge','petFeeding','petMedication','petCareNotes','petVetName','petVetPhone','petVetEmail','petPhotoData'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('petType').value='Dog';
   document.getElementById('petSex').value='Unknown';
   document.getElementById('petFixStatus').value='Unknown';
@@ -1051,7 +1057,9 @@ function editClient(id){
   document.getElementById('petFeeding').value=p.feeding||'';
   document.getElementById('petMedication').value=p.medication||'';
   document.getElementById('petCareNotes').value=p.careNotes||'';
-  document.getElementById('petVet').value=p.vet||'';
+  document.getElementById('petVetName').value=p.vetName ?? p.vet ?? '';
+  document.getElementById('petVetPhone').value=p.vetPhone||'';
+  document.getElementById('petVetEmail').value=p.vetEmail||'';
   document.getElementById('petPhotoData').value=p.photo||'';
   setImagePreview('petPhotoPreview', p.photo||'');
   document.getElementById('clientModal').classList.add('show');
@@ -1074,7 +1082,9 @@ function saveClient(){
     feeding:document.getElementById('petFeeding').value.trim(),
     medication:document.getElementById('petMedication').value.trim(),
     careNotes:document.getElementById('petCareNotes').value.trim(),
-    vet:document.getElementById('petVet').value.trim()
+    vetName:document.getElementById('petVetName').value.trim(),
+    vetPhone:document.getElementById('petVetPhone').value.trim(),
+    vetEmail:document.getElementById('petVetEmail').value.trim()
   };
   let pets=[petObj];
   if(id){
@@ -1118,7 +1128,9 @@ function openPetModal(clientId,petId=''){
   document.getElementById('petModalFeeding').value=p.feeding||'';
   document.getElementById('petModalMedication').value=p.medication||'';
   document.getElementById('petModalCareNotes').value=p.careNotes||'';
-  document.getElementById('petModalVet').value=p.vet||'';
+  document.getElementById('petModalVetName').value=p.vetName ?? p.vet ?? '';
+  document.getElementById('petModalVetPhone').value=p.vetPhone||'';
+  document.getElementById('petModalVetEmail').value=p.vetEmail||'';
   document.getElementById('petModalPhotoData').value=p.photo||'';
   document.getElementById('petModalPhotoFile').value='';
   setImagePreview('petModalPhotoPreview', p.photo||'');
@@ -1142,7 +1154,9 @@ function savePetFromModal(){
     feeding:document.getElementById('petModalFeeding').value.trim(),
     medication:document.getElementById('petModalMedication').value.trim(),
     careNotes:document.getElementById('petModalCareNotes').value.trim(),
-    vet:document.getElementById('petModalVet').value.trim()
+    vetName:document.getElementById('petModalVetName').value.trim(),
+    vetPhone:document.getElementById('petModalVetPhone').value.trim(),
+    vetEmail:document.getElementById('petModalVetEmail').value.trim()
   };
   c.pets=c.pets||[];
   const idx=c.pets.findIndex(x=>x.id===p.id);
