@@ -60,6 +60,11 @@
     border:2px solid rgba(255,255,255,.85)
   }
   .brand-icon svg{width:34px;height:34px;fill:currentColor;display:block}
+  .brand-icon.with-logo{background:#fff;border-color:var(--border);padding:3px}
+  .brand-icon img{width:100%;height:100%;object-fit:contain;display:block;border-radius:11px}
+  .logo-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .business-logo-preview{width:92px;height:92px;border:1px solid var(--border);border-radius:15px;object-fit:contain;padding:5px;background:#fff}
+  .profile-button{max-width:100%}
   .brand>div:last-child{min-width:0}
   h1{font-size:clamp(24px,3vw,34px);line-height:1.1;margin:0;overflow-wrap:anywhere}
   .subtitle{color:var(--muted);margin-top:4px;font-size:14px}
@@ -212,6 +217,7 @@
     .subtitle{font-size:13px}
     .top-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
     .top-actions .btn{width:100%}
+    .top-actions .profile-button{grid-column:1/-1}
 
     .tabs{
       flex-wrap:nowrap;
@@ -334,13 +340,14 @@
   <div class="topbar">
     <div class="brand">
       <div class="brand-icon" aria-hidden="true">
-        <svg viewBox="0 0 64 64" role="img" focusable="false">
+        <svg id="defaultBrandPaw" viewBox="0 0 64 64" role="img" focusable="false">
           <ellipse cx="19" cy="18" rx="7" ry="10"></ellipse>
           <ellipse cx="33" cy="14" rx="7" ry="10"></ellipse>
           <ellipse cx="47" cy="19" rx="7" ry="10"></ellipse>
           <ellipse cx="12" cy="32" rx="7" ry="9"></ellipse>
           <path d="M19 48c0-10 7-18 14-18s14 8 14 18c0 7-6 10-14 10s-14-3-14-10z"></path>
         </svg>
+        <img id="businessBrandIcon" alt="Business logo" style="display:none">
       </div>
       <div>
         <h1 id="brandName">Pet Sitter Client & Booking Manager</h1>
@@ -350,6 +357,7 @@
     <div class="top-actions">
       <button class="btn soft" onclick="openBookingModal()">+ New Booking</button>
       <button class="btn primary" onclick="openClientModal()">+ New Client</button>
+      <button class="btn soft profile-button" type="button" onclick="openBusinessSettings()">⚙ Business & Payments</button>
     </div>
   </div>
 
@@ -437,14 +445,24 @@
   <section id="settings" class="panel">
     <div class="grid two">
       <div class="card">
-        <h2>Business Settings</h2>
+        <h2>Business Profile & Payments</h2>
+        <p class="settings-note">Set up your business once. These details are saved in this browser and reused in booking emails and payment reminders.</p>
         <div class="form-grid">
-          <div><label>Business Name</label><input id="setBusinessName" placeholder="Happy Paws Pet Care"></div>
+          <div class="full"><label>Business Name (shown in your emails)</label><input id="setBusinessName" placeholder="Happy Paws Pet Care" autocomplete="organization"></div>
+          <div class="full"><label>Business Logo (optional)</label>
+            <input id="setBusinessLogoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleBusinessLogoUpload(event)">
+            <input id="setBusinessLogoData" type="hidden">
+            <div class="logo-row">
+              <img id="setBusinessLogoPreview" class="business-logo-preview" alt="Business logo preview" style="display:none">
+              <button class="btn mini" type="button" onclick="clearBusinessLogo()">Remove Logo</button>
+            </div>
+            <div class="settings-note">Your logo appears in the app header and stays in this browser. Email drafts are plain text; an uploaded logo cannot be attached automatically.</div>
+          </div>
           <div><label>Your Name</label><input id="setOwnerName" placeholder="Your name"></div>
           <div><label>Business Email</label><input id="setBusinessEmail" type="email" placeholder="hello@example.com"></div>
           <div><label>Phone</label><input id="setBusinessPhone" placeholder="(555) 555-5555"></div>
-          <div class="full"><label>Default payment link (optional)</label><input id="setPaymentLink" type="url" inputmode="url" placeholder="https://your-checkout-link">
-            <div class="help" style="margin-top:6px">Use a secure checkout link that accepts the amount requested, or create a link for the exact amount in your payment provider. This app cannot change the checkout amount or verify payments.</div>
+          <div class="full" style="padding-top:12px;border-top:1px solid var(--border)"><label>Default Payment Link (reuse in reminders &amp; payment requests)</label><input id="setPaymentLink" type="url" inputmode="url" placeholder="https://your-checkout-link">
+            <div class="help" style="margin-top:6px">Save this once. It will be reused for each booking unless you provide a different booking link, and added to reminders when a balance is due. The checkout must accept the requested amount. This app does not process or verify payments.</div>
           </div>
           <div><label>Default Reminder 1</label><input id="setReminder1Amount" type="number" min="0" value="1"></div>
           <div><label>Reminder 1 Unit</label>
@@ -499,7 +517,7 @@
           <textarea id="setReportTemplate"></textarea>
         </div>
       </div>
-      <p class="settings-note">Available placeholders: {client}, {pet}, {date}, {time}, {service}, {business}, {sitter}, {notes}</p>
+      <p class="settings-note">Available placeholders: {client}, {pet}, {date}, {time}, {service}, {business}, {sitter}, {notes}, {paymentLink}, {balance}. The business name is also included automatically if you omit {business}. Unpaid booking reminders include the payment link when one is saved.</p>
       <button class="btn primary" onclick="saveSettings()">Save Templates</button>
     </div>
   </section>
@@ -709,6 +727,7 @@ const defaultData = {
     ownerName: '',
     businessEmail: '',
     businessPhone: '',
+    logoData: '',
     paymentLink: '',
     reminder1Amount: 1,
     reminder1Unit: 'days',
@@ -840,6 +859,9 @@ function paymentDetailsForClient(b){
 }
 function replaceTemplate(t,b,extraNotes=''){
   const {client,pet}=getBookingContext(b);
+  const payment=bookingMoney(b);
+  const link=paymentLinkForBooking(b);
+  const payableLink=payment.total>0&&payment.remaining>0&&validPaymentLink(link)?link:'';
   const map={
     '{client}':client?.name||'',
     '{pet}':pet?.name||'',
@@ -848,14 +870,21 @@ function replaceTemplate(t,b,extraNotes=''){
     '{service}':b.service||'',
     '{business}':data.settings.businessName||'',
     '{sitter}':data.settings.ownerName||'',
-    '{notes}':extraNotes || b.notes || ''
+    '{notes}':extraNotes || b.notes || '',
+    '{paymentLink}':payableLink,
+    '{balance}':payment.total>0?formatMoney(payment.remaining):''
   };
   let out=t||'';
   Object.entries(map).forEach(([k,v])=>out=out.split(k).join(v));
   return out;
 }
 function mailto(email,subject,body){
-  const url=`mailto:${encodeURIComponent(email||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const business=(data.settings.businessName||'').trim();
+  let message=String(body||'');
+  if(business && business!=='Pet Sitter Client & Booking Manager' && !message.includes(business)){
+    message=message.trimEnd()+'\n\n'+business;
+  }
+  const url=`mailto:${encodeURIComponent(email||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
   window.location.href=url;
 }
 function setImagePreview(previewId, dataUrl=''){
@@ -938,6 +967,7 @@ function renderAll(){
   renderCalendar();
   loadSettingsForm();
   document.getElementById('brandName').textContent=data.settings.businessName||'Pet Sitter Client & Booking Manager';
+  renderBusinessLogo();
 }
 function renderStats(){
   const now=new Date();
@@ -1362,9 +1392,10 @@ function sendConfirmation(id){
   if(!client?.email?.trim()){alert('Please add the client email before sending a confirmation.');return;}
   const body=replaceTemplate(data.settings.confirmationTemplate,b);
   const payment=paymentDetailsForClient(b);
+  const link=paymentLinkForBooking(b);
+  const complete=payment&&!body.includes(link)?body+'\n\nPayment details\n'+payment:body;
   mailto(client.email.trim(),
-    `Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,
-    payment?body+'\n\nPayment details\n'+payment:body);
+    `Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,complete);
 }
 function sendReminder(id){
   const b=data.bookings.find(x=>x.id===id); if(!b)return;
@@ -1378,7 +1409,10 @@ function sendReminder(id){
     return;
   }
   const body=replaceTemplate(data.settings.reminderTemplate,b);
-  mailto(client.email.trim(),`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+  const payment=paymentDetailsForClient(b);
+  const link=paymentLinkForBooking(b);
+  const complete=payment&&!body.includes(link)?body+'\n\nPayment details\n'+payment:body;
+  mailto(client.email.trim(),`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,complete);
 }
 function sendReminderFromBookingModal(){
   const id=document.getElementById('bookingId').value;
@@ -1387,7 +1421,10 @@ function sendReminderFromBookingModal(){
   if(!b) return;
   const fields=[
     ['bookingClient','clientId'],['bookingPet','petId'],['bookingDate','date'],
-    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status']
+    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status'],
+    ['bookingPrice','price'],['bookingDepositRequested','depositRequested'],
+    ['bookingAmountPaid','amountPaid'],['bookingBalanceDueDate','balanceDueDate'],
+    ['bookingPaymentLink','paymentLink']
   ];
   const changed=fields.some(([elementId,field])=>
     document.getElementById(elementId).value!==String(b[field]||'')
@@ -1533,12 +1570,89 @@ END:VCALENDAR`;
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
 
+
+function validBusinessLogo(value){
+  return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(value||''));
+}
+function renderBusinessLogo(){
+  const image=document.getElementById('businessBrandIcon');
+  const paw=document.getElementById('defaultBrandPaw');
+  const container=document.querySelector('.brand-icon');
+  const value=data.settings.logoData||'';
+  if(validBusinessLogo(value)){
+    image.src=value;
+    image.style.display='block';
+    paw.style.display='none';
+    container.classList.add('with-logo');
+  } else {
+    image.removeAttribute('src');
+    image.style.display='none';
+    paw.style.display='block';
+    container.classList.remove('with-logo');
+  }
+}
+function updateBusinessLogoPreview(value){
+  const image=document.getElementById('setBusinessLogoPreview');
+  if(validBusinessLogo(value)){
+    image.src=value;
+    image.style.display='block';
+  } else {
+    image.removeAttribute('src');
+    image.style.display='none';
+  }
+}
+function clearBusinessLogo(){
+  document.getElementById('setBusinessLogoData').value='';
+  document.getElementById('setBusinessLogoFile').value='';
+  updateBusinessLogoPreview('');
+}
+function handleBusinessLogoUpload(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>4*1024*1024){
+    alert('Choose a PNG, JPG or WebP logo smaller than 4 MB.');
+    event.target.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onerror=()=>alert('The logo could not be read. Please try again.');
+  reader.onload=()=>{
+    const image=new Image();
+    image.onerror=()=>alert('The logo image could not be opened. Please use a different file.');
+    image.onload=()=>{
+      const factor=Math.min(1,320/Math.max(image.width,image.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(image.width*factor));
+      canvas.height=Math.max(1,Math.round(image.height*factor));
+      canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+      const value=canvas.toDataURL(file.type==='image/png'?'image/png':'image/jpeg',0.82);
+      if(value.length>350000){
+        alert('The compressed logo is too large. Try a smaller image.');
+        event.target.value='';
+        return;
+      }
+      document.getElementById('setBusinessLogoData').value=value;
+      updateBusinessLogoPreview(value);
+    };
+    image.src=String(reader.result||'');
+  };
+  reader.readAsDataURL(file);
+}
+function openBusinessSettings(){
+  const tab=document.querySelector('.tab[data-tab="settings"]');
+  if(!tab)return;
+  tab.click();
+  document.getElementById('settings').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function loadSettingsForm(){
   const s=data.settings;
   document.getElementById('setBusinessName').value=s.businessName||'';
   document.getElementById('setOwnerName').value=s.ownerName||'';
   document.getElementById('setBusinessEmail').value=s.businessEmail||'';
   document.getElementById('setBusinessPhone').value=s.businessPhone||'';
+  document.getElementById('setBusinessLogoData').value=s.logoData||'';
+  document.getElementById('setBusinessLogoFile').value='';
+  updateBusinessLogoPreview(s.logoData||'');
   document.getElementById('setPaymentLink').value=s.paymentLink||'';
   document.getElementById('setReminder1Amount').value=Number(s.reminder1Amount ?? 1);
   document.getElementById('setReminder1Unit').value=s.reminder1Unit||'days';
@@ -1557,6 +1671,7 @@ function saveSettings(){
   data.settings.ownerName=document.getElementById('setOwnerName').value.trim();
   data.settings.businessEmail=document.getElementById('setBusinessEmail').value.trim();
   data.settings.businessPhone=document.getElementById('setBusinessPhone').value.trim();
+  data.settings.logoData=validBusinessLogo(document.getElementById('setBusinessLogoData').value)?document.getElementById('setBusinessLogoData').value:'';
   data.settings.paymentLink=document.getElementById('setPaymentLink').value.trim();
   data.settings.reminder1Amount=Number(document.getElementById('setReminder1Amount').value||0);
   data.settings.reminder1Unit=document.getElementById('setReminder1Unit').value;
