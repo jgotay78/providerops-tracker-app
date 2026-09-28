@@ -524,7 +524,7 @@
         <select id="petType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select>
       </div>
       <div><label>Breed</label><input id="petBreed"></div>
-      <div><label>Sex</label><select id="petSex"><option value="">Select sex</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
+      <div><label>Sex (optional)</label><select id="petSex"><option value=""></option><option value="Female">Female</option><option value="Male">Male</option></select></div>
       <div><label>Spay / Neuter Status</label><select id="petFixStatus"><option value="Unknown">Unknown</option><option value="Spayed">Spayed (female)</option><option value="Neutered">Neutered (male)</option><option value="Not fixed">Not fixed</option></select></div>
       <div><label>Age</label><input id="petAge"></div>
       <div class="full">
@@ -565,7 +565,7 @@
       <div><label>Pet Name *</label><input id="petModalName"></div>
       <div><label>Pet Type</label><select id="petModalType"><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select></div>
       <div><label>Breed</label><input id="petModalBreed"></div>
-      <div><label>Sex</label><select id="petModalSex"><option value="">Select sex</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
+      <div><label>Sex (optional)</label><select id="petModalSex"><option value=""></option><option value="Female">Female</option><option value="Male">Male</option></select></div>
       <div><label>Spay / Neuter Status</label><select id="petModalFixStatus"><option value="Unknown">Unknown</option><option value="Spayed">Spayed (female)</option><option value="Neutered">Neutered (male)</option><option value="Not fixed">Not fixed</option></select></div>
       <div><label>Age</label><input id="petModalAge"></div>
       <div class="full">
@@ -1069,7 +1069,6 @@ function saveClient(){
   const email=document.getElementById('clientEmail').value.trim();
   const petName=document.getElementById('petName').value.trim();
   if(!name||!email||!petName){ alert('Please enter the client name, email, and pet name.'); return; }
-  if(!document.getElementById('petSex').value){ alert('Please select the pet\'s sex: Female or Male.'); return; }
   const id=document.getElementById('clientId').value;
   const petObj={
     id:document.getElementById('petId').value||uid('pet'),
@@ -1144,7 +1143,6 @@ function savePetFromModal(){
   const c=getClient(clientId); if(!c) return;
   const name=document.getElementById('petModalName').value.trim();
   if(!name){ alert('Please enter the pet name.'); return; }
-  if(!document.getElementById('petModalSex').value){ alert('Please select the pet\'s sex: Female or Male.'); return; }
   const p={
     id:petId||uid('pet'), name,
     type:document.getElementById('petModalType').value,
