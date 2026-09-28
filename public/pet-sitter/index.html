@@ -652,6 +652,7 @@
       <div class="full"><label>Visit Notes</label><textarea id="bookingNotes" placeholder="Gate code, feeding details, walk instructions, etc."></textarea></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn soft" id="bookingSendReminder" type="button" onclick="sendReminderFromBookingModal()" style="display:none" title="Open an email reminder draft for this saved booking">✉ Send Reminder</button>
       <button class="btn" onclick="closeModal('bookingModal')">Cancel</button>
       <button class="btn primary" onclick="saveBooking()">Save Booking</button>
     </div>
@@ -896,7 +897,7 @@ function visitCard(b){
     </div>
     <div class="visit-actions">
       <button class="btn mini" onclick="sendConfirmation('${b.id}')">Confirmation</button>
-      <button class="btn mini" onclick="sendReminder('${b.id}')">Reminder</button>
+      <button class="btn mini soft" onclick="sendReminder('${b.id}')" title="Open a reminder email draft for this booking">✉ Send Reminder</button>
       <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Add to Calendar</button>
       <button class="btn mini" onclick="openReportModal('${b.id}')">Visit Report</button>
     </div>
@@ -992,7 +993,7 @@ function renderBookings(){
       <td>
         <div class="visit-actions" style="justify-content:flex-start">
           <button class="btn mini" onclick="editBooking('${b.id}')">Edit</button>
-          <button class="btn mini" onclick="sendReminder('${b.id}')">Reminder</button>
+          <button class="btn mini soft" onclick="sendReminder('${b.id}')" title="Open a reminder email draft for this booking">✉ Send Reminder</button>
           <button class="btn mini soft" onclick="addToCalendar('${b.id}')">Calendar</button>
           <button class="btn mini danger" onclick="deleteBooking('${b.id}')">Delete</button>
         </div>
@@ -1177,6 +1178,7 @@ function openBookingModal(prefillDate=''){
   if(!data.clients.length){ alert('Add a client and pet first.'); openClientModal(); return; }
   document.getElementById('bookingModalTitle').textContent='New Booking';
   document.getElementById('bookingId').value='';
+  document.getElementById('bookingSendReminder').style.display='none';
   populateClientSelect();
   document.getElementById('bookingDate').value=prefillDate||ymd(new Date());
   document.getElementById('bookingTime').value='09:00';
@@ -1233,6 +1235,7 @@ function editBooking(id){
   const b=data.bookings.find(x=>x.id===id); if(!b)return;
   document.getElementById('bookingModalTitle').textContent='Edit Booking';
   document.getElementById('bookingId').value=b.id;
+  document.getElementById('bookingSendReminder').style.display='inline-block';
   populateClientSelect(b.clientId);
   populatePetSelect(b.petId);
   document.getElementById('bookingDate').value=b.date;
@@ -1261,9 +1264,35 @@ function sendConfirmation(id){
 }
 function sendReminder(id){
   const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  if(b.status==='Cancelled'){
+    alert('This booking is cancelled. Update its status before sending a reminder.');
+    return;
+  }
   const {client,pet}=getBookingContext(b);
+  if(!client?.email?.trim()){
+    alert('Please add the client email address before sending a booking reminder.');
+    return;
+  }
   const body=replaceTemplate(data.settings.reminderTemplate,b);
-  mailto(client?.email,`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+  mailto(client.email.trim(),`Pet Visit Reminder — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+}
+function sendReminderFromBookingModal(){
+  const id=document.getElementById('bookingId').value;
+  if(!id) return;
+  const b=data.bookings.find(x=>x.id===id);
+  if(!b) return;
+  const fields=[
+    ['bookingClient','clientId'],['bookingPet','petId'],['bookingDate','date'],
+    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status']
+  ];
+  const changed=fields.some(([elementId,field])=>
+    document.getElementById(elementId).value!==String(b[field]||'')
+  );
+  if(changed){
+    alert('Save your booking changes before sending the reminder so the email has the correct details.');
+    return;
+  }
+  sendReminder(id);
 }
 function openReportModal(id){
   document.getElementById('reportBookingId').value=id;
