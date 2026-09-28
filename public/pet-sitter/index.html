@@ -1296,6 +1296,20 @@ function saveBooking(){
     notes:document.getElementById('bookingNotes').value.trim()
   };
   if(!obj.clientId||!obj.petId||!obj.date||!obj.time){ alert('Please complete client, pet, date, and time.'); return; }
+  const amounts=[obj.price,obj.depositRequested,obj.amountPaid].map(v=>v===''?0:Number(v));
+  if(amounts.some(v=>!Number.isFinite(v)||v<0)){
+    alert('Price, deposit and amount received must be valid nonnegative amounts.');return;
+  }
+  const [totalCents,depositCents,paidCents]=amounts.map(v=>Math.round(v*100));
+  if(depositCents>totalCents){
+    alert('The deposit cannot exceed the total booking price.');return;
+  }
+  if(paidCents>totalCents){
+    alert('The amount received cannot exceed the total booking price.');return;
+  }
+  if(obj.paymentLink&&!validPaymentLink(obj.paymentLink)){
+    alert('Please use a secure booking payment link that starts with https://.');return;
+  }
   if(id){
     const idx=data.bookings.findIndex(b=>b.id===id);
     if(idx>-1) data.bookings[idx]=obj;
@@ -1335,10 +1349,14 @@ function deleteBooking(id){
 }
 
 function sendConfirmation(id){
-  const b=data.bookings.find(x=>x.id===id); if(!b)return;
+  const b=data.bookings.find(x=>x.id===id);if(!b)return;
   const {client,pet}=getBookingContext(b);
+  if(!client?.email?.trim()){alert('Please add the client email before sending a confirmation.');return;}
   const body=replaceTemplate(data.settings.confirmationTemplate,b);
-  mailto(client?.email,`Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,body);
+  const payment=paymentDetailsForClient(b);
+  mailto(client.email.trim(),
+    `Booking Confirmation — ${pet?.name||'Pet'} — ${fmtDate(b.date)}`,
+    payment?body+'\n\nPayment details\n'+payment:body);
 }
 function sendReminder(id){
   const b=data.bookings.find(x=>x.id===id); if(!b)return;
@@ -1371,6 +1389,60 @@ function sendReminderFromBookingModal(){
     return;
   }
   sendReminder(id);
+}
+
+function sendPaymentRequest(id,mode='next'){
+  const b=data.bookings.find(x=>x.id===id);if(!b)return;
+  if(b.status==='Cancelled'){
+    alert('This booking is cancelled. Update it before requesting payment.');return;
+  }
+  const {client,pet}=getBookingContext(b);
+  if(!client?.email?.trim()){
+    alert('Please add the client email before requesting payment.');return;
+  }
+  const m=bookingMoney(b);
+  if(!m.total){alert('Add a total booking price before requesting payment.');return;}
+  if(!m.remaining){alert('This booking is already marked paid in full.');return;}
+  const link=paymentLinkForBooking(b);
+  if(!validPaymentLink(link)){
+    alert('Add a secure HTTPS payment link to this booking or Business Settings first.');return;
+  }
+  const depositMode=mode!=='balance'&&m.depositDue>0;
+  const requested=depositMode?m.depositDue:m.remaining;
+  const type=depositMode?'optional deposit':'remaining balance';
+  const subject=(depositMode?'Optional deposit request':'Booking payment request')+
+    ' — '+(pet?.name||'Pet')+' — '+fmtDate(b.date);
+  const body=[
+    'Hi '+client.name+',','',
+    'Here are the payment details for '+(pet?.name||'your pet')+
+      "'s "+(b.service||'booking')+' on '+fmtDate(b.date)+' at '+fmtTime(b.time)+'.','',
+    'Total booking price: '+formatMoney(m.total),
+    'Payments already received: '+formatMoney(m.paid),
+    'Amount requested now ('+type+'): '+formatMoney(requested),
+    'Balance after this payment (if paid): '+formatMoney(Math.max(0,m.remaining-requested)),
+    'Balance due: '+(b.balanceDueDate?fmtDate(b.balanceDueDate):'By arrangement'),
+    '', 'Payment link: '+link,
+    'Please check that checkout shows the correct amount. If it differs, reply before paying.',
+    '', 'Thank you,',data.settings.ownerName||data.settings.businessName||'Your pet sitter'
+  ].join(String.fromCharCode(10));
+  mailto(client.email.trim(),subject,body);
+}
+function sendPaymentRequestFromBookingModal(){
+  const id=document.getElementById('bookingId').value;if(!id)return;
+  const b=data.bookings.find(x=>x.id===id);if(!b)return;
+  const fields=[
+    ['bookingClient','clientId'],['bookingPet','petId'],['bookingDate','date'],
+    ['bookingTime','time'],['bookingService','service'],['bookingStatus','status'],
+    ['bookingPrice','price'],['bookingDepositRequested','depositRequested'],
+    ['bookingAmountPaid','amountPaid'],['bookingBalanceDueDate','balanceDueDate'],
+    ['bookingPaymentLink','paymentLink']
+  ];
+  if(fields.some(([fieldId,key])=>
+    document.getElementById(fieldId).value!==String(b[key]||''))){
+    alert('Save the booking changes before requesting payment so the amounts and link are current.');
+    return;
+  }
+  sendPaymentRequest(id,document.getElementById('bookingPaymentRequestType').value);
 }
 function openReportModal(id){
   document.getElementById('reportBookingId').value=id;
@@ -1469,6 +1541,10 @@ function loadSettingsForm(){
   document.getElementById('setReportTemplate').value=s.reportTemplate||'';
 }
 function saveSettings(){
+  const defaultLink=document.getElementById('setPaymentLink').value.trim();
+  if(defaultLink&&!validPaymentLink(defaultLink)){
+    alert('Please use a secure payment link that starts with https://.');return;
+  }
   data.settings.businessName=document.getElementById('setBusinessName').value.trim()||'Pet Sitter Client & Booking Manager';
   data.settings.ownerName=document.getElementById('setOwnerName').value.trim();
   data.settings.businessEmail=document.getElementById('setBusinessEmail').value.trim();
